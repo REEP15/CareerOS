@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { JobPosting } from "@/types/job";
+import type { MatchResult } from "@/types/match";
 
 type CollectJobsResponse =
   | {
@@ -21,7 +22,23 @@ type CollectJobsResponse =
       error: string;
     };
 
-export function JobsCollectorPanel({ jobs }: { jobs: JobPosting[] }) {
+type MatchJobsResponse =
+  | {
+      success: true;
+      jobsProcessed: number;
+      recommended: number;
+      averageScore: number;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+type JobWithMatch = JobPosting & {
+  match: MatchResult | null;
+};
+
+export function JobsCollectorPanel({ jobs }: { jobs: JobWithMatch[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -53,6 +70,32 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobPosting[] }) {
     });
   };
 
+  const handleMatch = () => {
+    startTransition(async () => {
+      setError(null);
+      setMessage(null);
+
+      try {
+        const response = await fetch("/api/jobs/match", {
+          method: "POST",
+        });
+        const payload = (await response.json()) as MatchJobsResponse;
+
+        if (!response.ok || !payload.success) {
+          setError(payload.success ? "Job matching failed." : payload.error);
+          return;
+        }
+
+        setMessage(
+          `Matched ${payload.jobsProcessed} jobs. Recommended ${payload.recommended} with an average score of ${payload.averageScore}%.`,
+        );
+        router.refresh();
+      } catch {
+        setError("An unexpected error occurred while matching jobs.");
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -60,13 +103,18 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobPosting[] }) {
           <div className="space-y-1.5">
             <CardTitle>Collected Jobs</CardTitle>
             <CardDescription>
-              Run all enabled collectors, normalize the results, remove duplicates, and save new
-              postings to Firestore.
+              Run all enabled collectors, normalize the results, save new postings, and compare
+              every stored job against the ResumeProfile.
             </CardDescription>
           </div>
-          <Button onClick={handleCollect} disabled={isPending}>
-            {isPending ? "Collecting..." : "Collect Jobs"}
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={handleCollect} disabled={isPending}>
+              {isPending ? "Working..." : "Collect Jobs"}
+            </Button>
+            <Button variant="outline" onClick={handleMatch} disabled={isPending}>
+              {isPending ? "Working..." : "Run Matcher"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {message ? (
@@ -85,6 +133,9 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobPosting[] }) {
                 <TableRow>
                   <TableHead>Company</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Match %</TableHead>
+                  <TableHead>Recommended</TableHead>
+                  <TableHead>Missing Skills</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead>Salary</TableHead>
@@ -96,6 +147,35 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobPosting[] }) {
                     <TableRow key={job.id}>
                       <TableCell className="font-medium">{job.company}</TableCell>
                       <TableCell>{job.title}</TableCell>
+                      <TableCell>{job.match ? `${job.match.overallScore}%` : "—"}</TableCell>
+                      <TableCell>
+                        {job.match ? (
+                          <span
+                            className={
+                              job.match.recommended
+                                ? "rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700"
+                                : "rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
+                            }
+                          >
+                            {job.match.recommended ? "Recommended" : "Not Recommended"}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-52">
+                        {job.match && job.match.missingSkills.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {job.match.missingSkills.slice(0, 3).map((skill) => (
+                              <span key={skill} className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
                       <TableCell>{job.location}</TableCell>
                       <TableCell>{job.source}</TableCell>
                       <TableCell>{job.salary ?? "Not listed"}</TableCell>
@@ -103,7 +183,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobPosting[] }) {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                       No jobs stored yet. Run the collector to seed the pipeline.
                     </TableCell>
                   </TableRow>

@@ -4,6 +4,7 @@ import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 import type { Application } from "@/types/application";
 import type { JobPosting } from "@/types/job";
+import type { MatchResult } from "@/types/match";
 import type { Mission } from "@/types/mission";
 import type { ResumeProfile } from "@/types/resume";
 
@@ -20,6 +21,7 @@ export const COLLECTIONS = {
   resume: "resume",
   jobs: "jobs",
   applications: "applications",
+  matches: "matches",
   missions: "missions",
   settings: "settings",
 } as const;
@@ -81,6 +83,10 @@ export function getJobsCollection(): CollectionReference<JobPosting> {
 
 export function getApplicationsCollection(): CollectionReference<Application> {
   return collection(getDb(), COLLECTIONS.applications) as CollectionReference<Application>;
+}
+
+export function getMatchesCollection(): CollectionReference<MatchResult> {
+  return collection(getDb(), COLLECTIONS.matches) as CollectionReference<MatchResult>;
 }
 
 export function getMissionsCollection(): CollectionReference<Mission> {
