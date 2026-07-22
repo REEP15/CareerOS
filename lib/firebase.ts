@@ -21,9 +21,11 @@ export const COLLECTIONS = {
   resume: "resume",
   jobs: "jobs",
   applications: "applications",
+  coverLetters: "coverLetters",
   matches: "matches",
   missions: "missions",
   settings: "settings",
+  tailoredResumes: "tailoredResumes",
 } as const;
 
 export function isFirebaseConfigured() {
