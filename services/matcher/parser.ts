@@ -7,6 +7,8 @@ const matchResponseSchema = z.object({
   educationScore: z.number().min(0).max(100).catch(0),
   locationScore: z.number().min(0).max(100).catch(0),
   salaryScore: z.number().min(0).max(100).catch(0),
+  resumePassProbability: z.number().min(0).max(100).catch(0),
+  interviewProbability: z.number().min(0).max(100).catch(0),
   strengths: z.array(z.string().trim()).catch([]),
   weaknesses: z.array(z.string().trim()).catch([]),
   missingSkills: z.array(z.string().trim()).catch([]),

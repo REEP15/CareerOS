@@ -16,6 +16,8 @@ export type ResumeDiff = {
 export interface TailoredResume {
   id: string;
   jobId: string;
+  version: number;
+  versionLabel: string;
   profile: ResumeProfile;
   diff: ResumeDiff;
   pdfUrl: string;

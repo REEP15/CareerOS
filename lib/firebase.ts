@@ -3,10 +3,14 @@ import { collection, getFirestore, type CollectionReference, type Firestore } fr
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 import type { Application } from "@/types/application";
+import type { CoverLetter } from "@/types/coverLetter";
 import type { JobPosting } from "@/types/job";
 import type { MatchResult } from "@/types/match";
 import type { Mission } from "@/types/mission";
+import type { Notification } from "@/types/notification";
 import type { ResumeProfile } from "@/types/resume";
+import type { AppSettings } from "@/types/settings";
+import type { TailoredResume } from "@/types/tailoredResume";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -26,6 +30,7 @@ export const COLLECTIONS = {
   missions: "missions",
   settings: "settings",
   tailoredResumes: "tailoredResumes",
+  notifications: "notifications",
 } as const;
 
 export function isFirebaseConfigured() {
@@ -93,4 +98,33 @@ export function getMatchesCollection(): CollectionReference<MatchResult> {
 
 export function getMissionsCollection(): CollectionReference<Mission> {
   return collection(getDb(), COLLECTIONS.missions) as CollectionReference<Mission>;
+}
+
+export function getSettingsCollection(): CollectionReference<AppSettings> {
+  return collection(getDb(), COLLECTIONS.settings) as CollectionReference<AppSettings>;
+}
+
+export function getNotificationsCollection(): CollectionReference<Notification> {
+  return collection(getDb(), COLLECTIONS.notifications) as CollectionReference<Notification>;
+}
+
+export function getTailoredResumesCollection(): CollectionReference<TailoredResume> {
+  return collection(getDb(), COLLECTIONS.tailoredResumes) as CollectionReference<TailoredResume>;
+}
+
+export function getCoverLettersCollection(): CollectionReference<CoverLetter> {
+  return collection(getDb(), COLLECTIONS.coverLetters) as CollectionReference<CoverLetter>;
+}
+
+export function createArtifactDocId(jobId: string, version: number) {
+  return `${jobId}_v${version}`;
+}
+
+export function parseVersionLabel(versionLabel: string): number {
+  const match = /^v(\d+)$/.exec(versionLabel);
+  return match ? Number.parseInt(match[1], 10) : 1;
+}
+
+export function formatVersionLabel(version: number) {
+  return `v${version}`;
 }

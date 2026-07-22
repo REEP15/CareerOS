@@ -1,10 +1,16 @@
 import { doc, getDoc, getDocs, orderBy, query, setDoc } from "firebase/firestore";
 
-import { getJobMatchProvider } from "@/lib/ai";
-import { COLLECTIONS, getDb, getJobsCollection, getMatchesCollection, isFirebaseConfigured } from "@/lib/firebase";
+import {
+  COLLECTIONS,
+  getDb,
+  getJobsCollection,
+  getMatchesCollection,
+  isFirebaseConfigured,
+} from "@/lib/firebase";
 import { parseMatchResponse } from "@/services/matcher/parser";
 import { createJobMatchPrompt } from "@/services/matcher/prompts";
 import { calculateOverallScore, clampScore } from "@/services/matcher/scoring";
+import { getJobMatchProvider } from "@/lib/ai";
 import type { JobPosting } from "@/types/job";
 import type { MatchResult } from "@/types/match";
 import type { ResumeProfile } from "@/types/resume";
@@ -26,6 +32,8 @@ export async function matchJob(resume: ResumeProfile, job: JobPosting): Promise<
     educationScore: clampScore(parsedEvaluation.educationScore),
     locationScore: clampScore(parsedEvaluation.locationScore),
     salaryScore: clampScore(parsedEvaluation.salaryScore),
+    resumePassProbability: clampScore(parsedEvaluation.resumePassProbability),
+    interviewProbability: clampScore(parsedEvaluation.interviewProbability),
     strengths: parsedEvaluation.strengths.slice(0, 5),
     weaknesses: parsedEvaluation.weaknesses.slice(0, 5),
     missingSkills: parsedEvaluation.missingSkills.slice(0, 8),
@@ -52,6 +60,15 @@ export async function getStoredMatches(): Promise<MatchResult[]> {
 
   const snapshot = await getDocs(query(getMatchesCollection(), orderBy("overallScore", "desc")));
   return snapshot.docs.map((document) => document.data());
+}
+
+export async function getMatchForJob(jobId: string): Promise<MatchResult | null> {
+  if (!isFirebaseConfigured()) {
+    return null;
+  }
+
+  const snapshot = await getDoc(doc(getDb(), COLLECTIONS.matches, jobId));
+  return snapshot.exists() ? (snapshot.data() as MatchResult) : null;
 }
 
 export async function loadPrimaryResumeProfile(): Promise<ResumeProfile | null> {
@@ -87,6 +104,13 @@ function buildFallbackEvaluation(resume: ResumeProfile, job: JobPosting) {
   const educationScore = resume.education.length > 0 ? 75 : 35;
   const locationScore = inferLocationScore(resume, job);
   const salaryScore = inferSalaryScore(job);
+  const overallScore = calculateOverallScore({
+    skillsScore,
+    experienceScore,
+    educationScore,
+    locationScore,
+    salaryScore,
+  });
 
   return {
     confidence: matchedSkills.length > 0 ? 72 : 55,
@@ -95,6 +119,8 @@ function buildFallbackEvaluation(resume: ResumeProfile, job: JobPosting) {
     educationScore,
     locationScore,
     salaryScore,
+    resumePassProbability: clampScore(overallScore * 0.85 + skillsScore * 0.15),
+    interviewProbability: clampScore(overallScore * 0.7 + experienceScore * 0.3),
     strengths: [
       matchedSkills.length > 0 ? `Aligned skills: ${matchedSkills.slice(0, 3).join(", ")}` : "Broad technical foundation",
       resume.preferredRoles.some((role) => job.title.toLowerCase().includes(role.toLowerCase()))
@@ -112,14 +138,7 @@ function buildFallbackEvaluation(resume: ResumeProfile, job: JobPosting) {
       experienceScore,
       educationScore,
     }),
-    recommended:
-      calculateOverallScore({
-        skillsScore,
-        experienceScore,
-        educationScore,
-        locationScore,
-        salaryScore,
-      }) >= 70,
+    recommended: overallScore >= 70,
   };
 }
 

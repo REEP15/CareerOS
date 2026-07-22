@@ -1,13 +1,20 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import Link from "next/link";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Eye, FileText, Mail, Rocket } from "lucide-react";
+import { Download, Eye, ExternalLink, FileText, Mail, Rocket } from "lucide-react";
+import toast from "react-hot-toast";
 
+import { EmptyJobs } from "@/components/empty-states";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { Application } from "@/types/application";
+import { APPLICATION_STATUS_LABELS, ApplicationStatus, type Application } from "@/types/application";
 import type { CoverLetter } from "@/types/coverLetter";
 import type { JobPosting } from "@/types/job";
 import type { MatchResult } from "@/types/match";
@@ -50,89 +57,168 @@ type JobWithApplicationPackage = JobPosting & {
   tailoredResume: TailoredResume | null;
 };
 
+type SortField = "score" | "company" | "title" | "location" | "newest" | "salary";
+
 export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [selectedDiff, setSelectedDiff] = useState<TailoredResume | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [recommendedFilter, setRecommendedFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("all");
+  const [remoteFilter, setRemoteFilter] = useState("all");
+  const [minMatchFilter, setMinMatchFilter] = useState("");
+  const [minSalaryFilter, setMinSalaryFilter] = useState("");
+  const [sortField, setSortField] = useState<SortField>("score");
+
+  const sources = useMemo(() => [...new Set(jobs.map((job) => job.source))], [jobs]);
+  const locations = useMemo(() => [...new Set(jobs.map((job) => job.location))], [jobs]);
+
+  const filteredJobs = useMemo(() => {
+    let result = [...jobs];
+
+    if (search) {
+      const query = search.toLowerCase();
+      result = result.filter(
+        (job) =>
+          job.title.toLowerCase().includes(query) ||
+          job.company.toLowerCase().includes(query) ||
+          job.location.toLowerCase().includes(query),
+      );
+    }
+
+    if (statusFilter !== "all") {
+      result = result.filter(
+        (job) => (job.application?.status ?? ApplicationStatus.NOT_APPLIED) === statusFilter,
+      );
+    }
+
+    if (recommendedFilter === "recommended") {
+      result = result.filter((job) => job.match?.recommended);
+    } else if (recommendedFilter === "not-recommended") {
+      result = result.filter((job) => job.match && !job.match.recommended);
+    }
+
+    if (sourceFilter !== "all") {
+      result = result.filter((job) => job.source === sourceFilter);
+    }
+
+    if (locationFilter !== "all") {
+      result = result.filter((job) => job.location === locationFilter);
+    }
+
+    if (remoteFilter === "remote") {
+      result = result.filter((job) => job.location.toLowerCase().includes("remote"));
+    } else if (remoteFilter === "onsite") {
+      result = result.filter((job) => !job.location.toLowerCase().includes("remote"));
+    }
+
+    if (minMatchFilter) {
+      const minMatch = Number.parseInt(minMatchFilter, 10);
+      result = result.filter((job) => (job.match?.overallScore ?? 0) >= minMatch);
+    }
+
+    if (minSalaryFilter) {
+      const minSalary = Number.parseInt(minSalaryFilter, 10);
+      result = result.filter((job) => {
+        if (!job.salary) return false;
+        const salaryMatch = /(\d[\d,]*)/.exec(job.salary.replace(/,/g, ""));
+        if (!salaryMatch) return false;
+        const salaryNumber = Number.parseInt(salaryMatch[1], 10);
+        return salaryNumber >= minSalary;
+      });
+    }
+
+    result.sort((left, right) => {
+      switch (sortField) {
+        case "company":
+          return left.company.localeCompare(right.company);
+        case "title":
+          return left.title.localeCompare(right.title);
+        case "location":
+          return left.location.localeCompare(right.location);
+        case "newest":
+          return new Date(right.scrapedAt).getTime() - new Date(left.scrapedAt).getTime();
+        case "salary":
+          const leftSalary = left.salary ? extractSalaryNumber(left.salary) ?? 0 : 0;
+          const rightSalary = right.salary ? extractSalaryNumber(right.salary) ?? 0 : 0;
+          return rightSalary - leftSalary;
+        default:
+          return (right.match?.overallScore ?? -1) - (left.match?.overallScore ?? -1);
+      }
+    });
+
+    return result;
+  }, [jobs, search, statusFilter, recommendedFilter, sourceFilter, locationFilter, remoteFilter, minMatchFilter, minSalaryFilter, sortField]);
+
+  function extractSalaryNumber(salary: string): number | null {
+    const match = /(\d[\d,]*)/.exec(salary.replace(/,/g, ""));
+    return match ? Number.parseInt(match[1], 10) : null;
+  }
 
   const handleCollect = () => {
     startTransition(async () => {
-      setError(null);
-      setMessage(null);
-
       try {
-        const response = await fetch("/api/jobs/collect", {
-          method: "POST",
-        });
+        const response = await fetch("/api/jobs/collect", { method: "POST" });
         const payload = (await response.json()) as CollectJobsResponse;
 
         if (!response.ok || !payload.success) {
-          setError(payload.success ? "Job collection failed." : payload.error);
+          toast.error(payload.success ? "Job collection failed." : payload.error);
           return;
         }
 
-        setMessage(
-          `Collected ${payload.jobsFound} jobs from ${payload.collectors} collectors. Added ${payload.added}, skipped ${payload.duplicates}.`,
+        toast.success(
+          `Collected ${payload.jobsFound} jobs. Added ${payload.added}, skipped ${payload.duplicates}.`,
         );
         router.refresh();
       } catch {
-        setError("An unexpected error occurred while collecting jobs.");
+        toast.error("An unexpected error occurred while collecting jobs.");
       }
     });
   };
 
   const handleMatch = () => {
     startTransition(async () => {
-      setError(null);
-      setMessage(null);
-
       try {
-        const response = await fetch("/api/jobs/match", {
-          method: "POST",
-        });
+        const response = await fetch("/api/jobs/match", { method: "POST" });
         const payload = (await response.json()) as MatchJobsResponse;
 
         if (!response.ok || !payload.success) {
-          setError(payload.success ? "Job matching failed." : payload.error);
+          toast.error(payload.success ? "Job matching failed." : payload.error);
           return;
         }
 
-        setMessage(
-          `Matched ${payload.jobsProcessed} jobs. Recommended ${payload.recommended} with an average score of ${payload.averageScore}%.`,
+        toast.success(
+          `Matched ${payload.jobsProcessed} jobs. ${payload.recommended} recommended (avg ${payload.averageScore}%).`,
         );
         router.refresh();
       } catch {
-        setError("An unexpected error occurred while matching jobs.");
+        toast.error("An unexpected error occurred while matching jobs.");
       }
     });
   };
 
   const handleJobAction = (endpoint: string, jobId: string, successMessage: string) => {
     startTransition(async () => {
-      setError(null);
-      setMessage(null);
-
       try {
         const response = await fetch(endpoint, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ jobId }),
         });
         const payload = (await response.json()) as JobActionResponse;
 
         if (!response.ok || !payload.success) {
-          setError(payload.error ?? "Action failed.");
+          toast.error(payload.error ?? "Action failed.");
           return;
         }
 
-        setMessage(successMessage);
+        toast.success(successMessage);
         router.refresh();
       } catch {
-        setError("An unexpected error occurred while running this action.");
+        toast.error("An unexpected error occurred while running this action.");
       }
     });
   };
@@ -144,8 +230,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
           <div className="space-y-1.5">
             <CardTitle>Collected Jobs</CardTitle>
             <CardDescription>
-              Run collectors, match jobs, generate application documents, and start assisted
-              applications.
+              {filteredJobs.length} of {jobs.length} jobs shown
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -158,66 +243,136 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {message ? (
-            <div className="rounded-xl border border-border bg-muted/60 px-4 py-3 text-sm text-foreground">
-              {message}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Input
+              placeholder="Search title, company, location..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="sm:col-span-2 lg:col-span-3"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="all">All statuses</option>
+              {Object.entries(APPLICATION_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+            <Select value={recommendedFilter} onChange={(event) => setRecommendedFilter(event.target.value)}>
+              <option value="all">All recommendations</option>
+              <option value="recommended">Recommended</option>
+              <option value="not-recommended">Not recommended</option>
+            </Select>
+            <Select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>
+              <option value="all">All sources</option>
+              {sources.map((source) => (
+                <option key={source} value={source}>
+                  {source}
+                </option>
+              ))}
+            </Select>
+            <Select value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)}>
+              <option value="all">All locations</option>
+              {locations.map((location) => (
+                <option key={location} value={location}>
+                  {location}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Select value={remoteFilter} onChange={(event) => setRemoteFilter(event.target.value)}>
+              <option value="all">All work types</option>
+              <option value="remote">Remote</option>
+              <option value="onsite">On-site</option>
+            </Select>
+            <div className="space-y-1">
+              <Label htmlFor="minMatch" className="text-xs">Min match %</Label>
+              <Input
+                id="minMatch"
+                type="number"
+                min={0}
+                max={100}
+                placeholder="0"
+                value={minMatchFilter}
+                onChange={(event) => setMinMatchFilter(event.target.value)}
+              />
             </div>
-          ) : null}
-          {error ? (
-            <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {error}
+            <div className="space-y-1">
+              <Label htmlFor="minSalary" className="text-xs">Min salary</Label>
+              <Input
+                id="minSalary"
+                type="number"
+                min={0}
+                placeholder="0"
+                value={minSalaryFilter}
+                onChange={(event) => setMinSalaryFilter(event.target.value)}
+              />
             </div>
-          ) : null}
-          <div className="overflow-hidden rounded-2xl border border-border/80">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Match %</TableHead>
-                  <TableHead>Recommended</TableHead>
-                  <TableHead>Missing Skills</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Salary</TableHead>
-                  <TableHead>Resume Ready</TableHead>
-                  <TableHead>Cover Letter Ready</TableHead>
-                  <TableHead>Application Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {jobs.length > 0 ? (
-                  jobs.map((job) => (
+            <Select value={sortField} onChange={(event) => setSortField(event.target.value as SortField)}>
+              <option value="score">Sort by match score</option>
+              <option value="newest">Sort by newest</option>
+              <option value="salary">Sort by salary</option>
+              <option value="company">Sort by company</option>
+              <option value="title">Sort by title</option>
+              <option value="location">Sort by location</option>
+            </Select>
+          </div>
+
+          {filteredJobs.length === 0 ? (
+            jobs.length === 0 ? (
+              <EmptyJobs />
+            ) : (
+              <p className="py-10 text-center text-sm text-muted-foreground">No jobs match your filters.</p>
+            )
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-border/80">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Match %</TableHead>
+                    <TableHead>Recommended</TableHead>
+                    <TableHead>Missing Skills</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredJobs.map((job) => (
                     <TableRow key={job.id}>
-                      <TableCell className="font-medium">{job.company}</TableCell>
-                      <TableCell>{job.title}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link href={`/jobs/${job.id}`} className="hover:underline">
+                          {job.company}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/jobs/${job.id}`} className="hover:underline">
+                          {job.title}
+                        </Link>
+                      </TableCell>
                       <TableCell>{job.match ? `${job.match.overallScore}%` : "-"}</TableCell>
                       <TableCell>
                         {job.match ? (
-                          <span
-                            className={
-                              job.match.recommended
-                                ? "rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700"
-                                : "rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
-                            }
-                          >
-                            {job.match.recommended ? "Recommended" : "Not Recommended"}
-                          </span>
+                          <Badge variant={job.match.recommended ? "success" : "secondary"}>
+                            {job.match.recommended ? "Yes" : "No"}
+                          </Badge>
                         ) : (
                           "-"
                         )}
                       </TableCell>
                       <TableCell className="max-w-52">
                         {job.match && job.match.missingSkills.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-1">
                             {job.match.missingSkills.slice(0, 3).map((skill) => (
-                              <span
-                                key={skill}
-                                className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
-                              >
+                              <Badge key={skill} variant="outline">
                                 {skill}
-                              </span>
+                              </Badge>
                             ))}
                           </div>
                         ) : (
@@ -226,26 +381,28 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                       </TableCell>
                       <TableCell>{job.location}</TableCell>
                       <TableCell>{job.source}</TableCell>
-                      <TableCell>{job.salary ?? "Not listed"}</TableCell>
-                      <TableCell>{job.tailoredResume ? "Yes" : "No"}</TableCell>
-                      <TableCell>{job.coverLetter ? "Yes" : "No"}</TableCell>
-                      <TableCell>{job.application?.status ?? "Not Applied"}</TableCell>
                       <TableCell>
-                        <div className="flex min-w-72 flex-wrap gap-2">
+                        <Badge variant="secondary">
+                          {APPLICATION_STATUS_LABELS[job.application?.status ?? ApplicationStatus.NOT_APPLIED]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex min-w-64 flex-wrap gap-2">
+                          <Link href={`/jobs/${job.id}`}>
+                            <Button size="sm" variant="ghost">
+                              <ExternalLink className="h-4 w-4" />
+                              Details
+                            </Button>
+                          </Link>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                              handleJobAction(
-                                "/api/resume/tailor",
-                                job.id,
-                                `Tailored resume generated for ${job.title}.`,
-                              )
+                              handleJobAction("/api/resume/tailor", job.id, `Resume generated for ${job.title}.`)
                             }
                             disabled={isPending || !job.match}
                           >
                             <FileText className="h-4 w-4" />
-                            Generate Resume
                           </Button>
                           <Button
                             size="sm"
@@ -260,7 +417,6 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                             disabled={isPending || !job.match}
                           >
                             <Mail className="h-4 w-4" />
-                            Generate Cover Letter
                           </Button>
                           <Button
                             size="sm"
@@ -269,26 +425,14 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                             disabled={!job.tailoredResume}
                           >
                             <Eye className="h-4 w-4" />
-                            Preview Diff
                           </Button>
                           {job.tailoredResume ? (
                             <a
-                              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-sm font-medium hover:bg-muted"
+                              className="inline-flex h-9 items-center justify-center rounded-lg border border-input bg-background px-2 hover:bg-muted"
                               href={job.tailoredResume.pdfUrl}
                               download
                             >
                               <Download className="h-4 w-4" />
-                              Resume
-                            </a>
-                          ) : null}
-                          {job.coverLetter ? (
-                            <a
-                              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-sm font-medium hover:bg-muted"
-                              href={job.coverLetter.pdfUrl}
-                              download
-                            >
-                              <Download className="h-4 w-4" />
-                              Cover Letter
                             </a>
                           ) : null}
                           <Button
@@ -297,36 +441,30 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                               handleJobAction(
                                 "/api/apply/start",
                                 job.id,
-                                `Application opened for ${job.title}. Review and submit manually.`,
+                                `Application opened for ${job.title}.`,
                               )
                             }
                             disabled={isPending || !job.tailoredResume}
                           >
                             <Rocket className="h-4 w-4" />
-                            Start Application
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={12} className="py-10 text-center text-sm text-muted-foreground">
-                      No jobs stored yet. Run the collector to seed the pipeline.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
+
       {selectedDiff ? (
         <Card>
           <CardHeader>
             <CardTitle>Resume Diff Preview</CardTitle>
             <CardDescription>
-              {selectedDiff.profile.personal.name} tailored for job ID {selectedDiff.jobId}
+              {selectedDiff.profile.personal.name} · {selectedDiff.versionLabel}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6 md:grid-cols-2">
@@ -346,10 +484,6 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                 <p className="mt-2">{selectedDiff.diff.skills.before.join(", ") || "-"}</p>
                 <p className="mt-4 font-medium text-muted-foreground">After</p>
                 <p className="mt-2">{selectedDiff.diff.skills.after.join(", ") || "-"}</p>
-                <p className="mt-4 font-medium text-muted-foreground">ATS Keywords</p>
-                <p className="mt-2">{selectedDiff.diff.keywordOptimizations.join(", ") || "-"}</p>
-                <p className="mt-4 font-medium text-muted-foreground">Prioritized Projects</p>
-                <p className="mt-2">{selectedDiff.diff.prioritizedProjects.join(", ") || "-"}</p>
               </div>
             </div>
           </CardContent>

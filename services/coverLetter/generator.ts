@@ -1,7 +1,13 @@
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, orderBy, query, setDoc, where } from "firebase/firestore";
 
 import { getCoverLetterProvider } from "@/lib/ai";
 import { COLLECTIONS, getDb, isFirebaseConfigured } from "@/lib/firebase";
+import {
+  buildArtifactId,
+  buildVersionLabel,
+  buildVersionedFileName,
+  getNextArtifactVersion,
+} from "@/services/artifacts/versioning";
 import { createCoverLetterPrompt } from "@/services/coverLetter/prompts";
 import { parseCoverLetterResponse } from "@/services/coverLetter/parser";
 import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
@@ -24,13 +30,29 @@ export async function generateCoverLetter(job: JobPosting, match: MatchResult | 
   return generated;
 }
 
-export async function getCoverLetter(jobId: string): Promise<CoverLetter | null> {
+export async function getCoverLetter(jobId: string, versionLabel?: string): Promise<CoverLetter | null> {
   if (!isFirebaseConfigured()) {
     return null;
   }
 
-  const snapshot = await getDoc(doc(getDb(), COLLECTIONS.coverLetters, jobId));
-  return snapshot.exists() ? (snapshot.data() as CoverLetter) : null;
+  const versions = await getCoverLetterVersions(jobId);
+
+  if (versionLabel) {
+    return versions.find((letter) => letter.versionLabel === versionLabel) ?? null;
+  }
+
+  return versions[0] ?? null;
+}
+
+export async function getCoverLetterVersions(jobId: string): Promise<CoverLetter[]> {
+  if (!isFirebaseConfigured()) {
+    return [];
+  }
+
+  const snapshot = await getDocs(
+    query(collection(getDb(), COLLECTIONS.coverLetters), where("jobId", "==", jobId), orderBy("version", "desc")),
+  );
+  return snapshot.docs.map((document) => document.data() as CoverLetter);
 }
 
 export async function getCoverLetters(): Promise<CoverLetter[]> {
@@ -39,23 +61,38 @@ export async function getCoverLetters(): Promise<CoverLetter[]> {
   }
 
   const snapshot = await getDocs(collection(getDb(), COLLECTIONS.coverLetters));
-  return snapshot.docs.map((document) => document.data() as CoverLetter);
+  const byJobId = new Map<string, CoverLetter>();
+
+  for (const document of snapshot.docs) {
+    const coverLetter = document.data() as CoverLetter;
+    const existing = byJobId.get(coverLetter.jobId);
+
+    if (!existing || coverLetter.version > existing.version) {
+      byJobId.set(coverLetter.jobId, coverLetter);
+    }
+  }
+
+  return [...byJobId.values()];
 }
 
 async function createCoverLetter(resume: ResumeProfile, job: JobPosting, match: MatchResult | null) {
+  const version = await getNextArtifactVersion(job.id, COLLECTIONS.coverLetters);
+  const versionLabel = buildVersionLabel(version);
   const provider = getCoverLetterProvider();
   const prompt = createCoverLetterPrompt(resume, job, match);
   const response = provider ? await provider.generateCoverLetter({ prompt, resume, job, match }) : null;
   const parsed = response ? parseCoverLetterResponse(response) : buildFallbackCoverLetter(resume, job, match);
   const content = parsed.content;
   const { pdfUrl } = await writeTextPdf({
-    fileName: `${job.id}-cover-letter.pdf`,
+    fileName: buildVersionedFileName(job.id, "cover-letter", version),
     lines: coverLetterToPdfLines(content),
   });
 
   return {
-    id: job.id,
+    id: buildArtifactId(job.id, version),
     jobId: job.id,
+    version,
+    versionLabel,
     company: job.company,
     role: job.title,
     content,

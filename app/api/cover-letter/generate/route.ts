@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { generateCoverLetter } from "@/services/coverLetter/generator";
 import { loadApplicationPackage, upsertApplication } from "@/services/apply/tracker";
+import { ApplicationStatus } from "@/types/application";
 
 const requestSchema = z.object({
   jobId: z.string().min(1),
@@ -15,9 +16,10 @@ export async function POST(request: Request) {
     const coverLetter = await generateCoverLetter(applicationPackage.job, applicationPackage.match);
 
     await upsertApplication({
-      coverLetterVersion: coverLetter.pdfUrl,
+      coverLetterVersion: coverLetter.versionLabel,
       jobId,
-      status: applicationPackage.tailoredResume ? "Ready" : "Preparing",
+      status: applicationPackage.tailoredResume ? ApplicationStatus.READY : ApplicationStatus.PREPARING,
+      timelineNote: `Generated ${coverLetter.versionLabel}`,
     });
 
     return NextResponse.json({

@@ -1,7 +1,13 @@
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, orderBy, query, setDoc, where } from "firebase/firestore";
 
 import { getResumeTailoringProvider } from "@/lib/ai";
 import { COLLECTIONS, getDb, isFirebaseConfigured } from "@/lib/firebase";
+import {
+  buildArtifactId,
+  buildVersionLabel,
+  buildVersionedFileName,
+  getNextArtifactVersion,
+} from "@/services/artifacts/versioning";
 import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
 import { parseTailoredResumeResponse } from "@/services/tailoring/parser";
 import { writeTextPdf } from "@/services/tailoring/pdf";
@@ -24,13 +30,29 @@ export async function generateTailoredResume(job: JobPosting, match: MatchResult
   return generated;
 }
 
-export async function getTailoredResume(jobId: string): Promise<TailoredResume | null> {
+export async function getTailoredResume(jobId: string, versionLabel?: string): Promise<TailoredResume | null> {
   if (!isFirebaseConfigured()) {
     return null;
   }
 
-  const snapshot = await getDoc(doc(getDb(), COLLECTIONS.tailoredResumes, jobId));
-  return snapshot.exists() ? (snapshot.data() as TailoredResume) : null;
+  if (versionLabel) {
+    const versions = await getTailoredResumeVersions(jobId);
+    return versions.find((resume) => resume.versionLabel === versionLabel) ?? null;
+  }
+
+  const versions = await getTailoredResumeVersions(jobId);
+  return versions[0] ?? null;
+}
+
+export async function getTailoredResumeVersions(jobId: string): Promise<TailoredResume[]> {
+  if (!isFirebaseConfigured()) {
+    return [];
+  }
+
+  const snapshot = await getDocs(
+    query(collection(getDb(), COLLECTIONS.tailoredResumes), where("jobId", "==", jobId), orderBy("version", "desc")),
+  );
+  return snapshot.docs.map((document) => document.data() as TailoredResume);
 }
 
 export async function getTailoredResumes(): Promise<TailoredResume[]> {
@@ -39,10 +61,23 @@ export async function getTailoredResumes(): Promise<TailoredResume[]> {
   }
 
   const snapshot = await getDocs(collection(getDb(), COLLECTIONS.tailoredResumes));
-  return snapshot.docs.map((document) => document.data() as TailoredResume);
+  const byJobId = new Map<string, TailoredResume>();
+
+  for (const document of snapshot.docs) {
+    const resume = document.data() as TailoredResume;
+    const existing = byJobId.get(resume.jobId);
+
+    if (!existing || resume.version > existing.version) {
+      byJobId.set(resume.jobId, resume);
+    }
+  }
+
+  return [...byJobId.values()];
 }
 
 async function createTailoredResume(resume: ResumeProfile, job: JobPosting, match: MatchResult | null) {
+  const version = await getNextArtifactVersion(job.id, COLLECTIONS.tailoredResumes);
+  const versionLabel = buildVersionLabel(version);
   const provider = getResumeTailoringProvider();
   const prompt = createResumeTailoringPrompt(resume, job, match);
   const response = provider ? await provider.tailorResume({ prompt, resume, job, match }) : null;
@@ -50,13 +85,15 @@ async function createTailoredResume(resume: ResumeProfile, job: JobPosting, matc
   const profile = enforceNoFabrication(resume, parsed.profile);
   const diff = normalizeDiff(resume, profile, parsed.diff);
   const { pdfUrl } = await writeTextPdf({
-    fileName: `${job.id}-tailored-resume.pdf`,
+    fileName: buildVersionedFileName(job.id, "resume", version),
     lines: resumeProfileToPdfLines(profile, job),
   });
 
   return {
-    id: job.id,
+    id: buildArtifactId(job.id, version),
     jobId: job.id,
+    version,
+    versionLabel,
     profile,
     diff,
     pdfUrl,

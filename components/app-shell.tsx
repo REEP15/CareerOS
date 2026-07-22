@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { BriefcaseBusiness, FileText, LayoutDashboard, Menu, Settings } from "lucide-react";
+import { BriefcaseBusiness, FileText, LayoutDashboard, Menu, Settings, Target } from "lucide-react";
 import Link from "next/link";
 
+import { GlobalSearch } from "@/components/global-search";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -10,6 +11,7 @@ import { cn } from "@/lib/utils";
 const navigationItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
+  { href: "/missions", label: "Missions", icon: Target },
   { href: "/resume", label: "Resume", icon: FileText },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
@@ -68,12 +70,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-            <div>
+          <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
+            <div className="shrink-0">
               <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
                 Foundation
               </p>
               <h2 className="text-lg font-semibold">CareerOS</h2>
+            </div>
+            <div className="hidden flex-1 md:block">
+              <GlobalSearch />
             </div>
             <Sheet>
               <SheetTrigger asChild>

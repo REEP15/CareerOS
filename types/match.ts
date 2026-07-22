@@ -7,6 +7,8 @@ export interface MatchResult {
   educationScore: number;
   locationScore: number;
   salaryScore: number;
+  resumePassProbability: number;
+  interviewProbability: number;
   strengths: string[];
   weaknesses: string[];
   missingSkills: string[];

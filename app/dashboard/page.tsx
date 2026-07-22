@@ -1,25 +1,17 @@
+import { DashboardContent } from "@/components/dashboard-content";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDashboardMetrics } from "@/services/dashboard/metrics";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const metrics = await getDashboardMetrics();
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Dashboard"
-        description="The CareerOS dashboard will become the single place to track resume readiness, job pipeline, and mission progress."
+        description="Track your job pipeline, match quality, and application progress at a glance."
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>Coming Soon</CardTitle>
-          <CardDescription>
-            Phase 1 establishes the shell only. Job matching, analytics, and automation are out of
-            scope for now.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Resume Brain and Firebase foundations are now the primary focus.
-        </CardContent>
-      </Card>
+      <DashboardContent metrics={metrics} />
     </div>
   );
 }

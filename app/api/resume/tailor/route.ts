@@ -4,6 +4,7 @@ import { z } from "zod";
 import { upsertApplication } from "@/services/apply/tracker";
 import { generateTailoredResume } from "@/services/tailoring/tailor";
 import { loadApplicationPackage } from "@/services/apply/tracker";
+import { ApplicationStatus } from "@/types/application";
 
 const requestSchema = z.object({
   jobId: z.string().min(1),
@@ -17,8 +18,9 @@ export async function POST(request: Request) {
 
     await upsertApplication({
       jobId,
-      resumeVersion: tailoredResume.pdfUrl,
-      status: applicationPackage.coverLetter ? "Ready" : "Preparing",
+      resumeVersion: tailoredResume.versionLabel,
+      status: applicationPackage.coverLetter ? ApplicationStatus.READY : ApplicationStatus.PREPARING,
+      timelineNote: `Generated ${tailoredResume.versionLabel}`,
     });
 
     return NextResponse.json({
