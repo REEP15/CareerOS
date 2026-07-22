@@ -1,24 +1,17 @@
+import { JobsCollectorPanel } from "@/components/jobs-collector-panel";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getStoredJobs } from "@/services/collector/save";
 
-export default function JobsPage() {
+export default async function JobsPage() {
+  const jobs = await getStoredJobs();
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Jobs"
-        description="Job collection and automation are intentionally deferred. This route exists to lock in the application structure for later phases."
+        description="CareerOS now uses a modular collector pipeline that aggregates normalized jobs from multiple providers into a single schema."
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>Coming Soon</CardTitle>
-          <CardDescription>
-            Job scraping, collection, and AI matching are not part of Phase 1.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          The `jobs` Firestore collection is reserved and the page is ready for future features.
-        </CardContent>
-      </Card>
+      <JobsCollectorPanel jobs={jobs} />
     </div>
   );
 }
