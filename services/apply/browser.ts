@@ -19,7 +19,7 @@ export async function startApplication(uid: string, jobId: string): Promise<Appl
   });
 
   try {
-    const result = await launchApplicationBrowser(applicationPackage);
+    const result = await launchApplicationBrowser(uid, applicationPackage);
 
     await upsertApplication(uid, {
       jobId,

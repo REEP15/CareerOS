@@ -2,21 +2,21 @@ import { getApiKey } from "@/services/api-keys/api-keys";
 import { getSettings } from "@/services/settings/settings";
 import type { AiProviderName } from "@/types/settings";
 
-export async function getSelectedProvider(): Promise<AiProviderName> {
-  const settings = await getSettings();
+export async function getSelectedProvider(uid: string): Promise<AiProviderName> {
+  const settings = await getSettings(uid);
   return settings.aiProvider;
 }
 
-export async function getProviderApiKey(): Promise<string | undefined> {
-  const provider = await getSelectedProvider();
+export async function getProviderApiKey(uid: string): Promise<string | undefined> {
+  const provider = await getSelectedProvider(uid);
   if (provider === "none") {
     return undefined;
   }
-  return await getApiKey(provider);
+  return await getApiKey(uid, provider);
 }
 
-export async function makeChatGPTRequest(messages: Array<{ role: string; content: string }>): Promise<string> {
-  const apiKey = await getApiKey("chatgpt");
+export async function makeChatGPTRequest(uid: string, messages: Array<{ role: string; content: string }>): Promise<string> {
+  const apiKey = await getApiKey(uid, "chatgpt");
   if (!apiKey) {
     throw new Error("ChatGPT API key not found.");
   }
@@ -42,8 +42,8 @@ export async function makeChatGPTRequest(messages: Array<{ role: string; content
   return data.choices[0]?.message?.content || "";
 }
 
-export async function makeGeminiRequest(prompt: string): Promise<string> {
-  const apiKey = await getApiKey("gemini");
+export async function makeGeminiRequest(uid: string, prompt: string): Promise<string> {
+  const apiKey = await getApiKey(uid, "gemini");
   if (!apiKey) {
     throw new Error("Gemini API key not found.");
   }
@@ -77,8 +77,8 @@ export async function makeGeminiRequest(prompt: string): Promise<string> {
   return data.candidates[0]?.content?.parts[0]?.text || "";
 }
 
-export async function makeDeepSeekRequest(messages: Array<{ role: string; content: string }>): Promise<string> {
-  const apiKey = await getApiKey("deepseek");
+export async function makeDeepSeekRequest(uid: string, messages: Array<{ role: string; content: string }>): Promise<string> {
+  const apiKey = await getApiKey(uid, "deepseek");
   if (!apiKey) {
     throw new Error("DeepSeek API key not found.");
   }

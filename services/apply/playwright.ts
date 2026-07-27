@@ -48,10 +48,10 @@ export type PlaywrightApplyResult = {
   reviewPageReached: boolean;
 };
 
-export async function launchApplicationBrowser(applicationPackage: ApplicationPackage): Promise<PlaywrightApplyResult> {
-  const settings = await getSettings();
+export async function launchApplicationBrowser(uid: string, applicationPackage: ApplicationPackage): Promise<PlaywrightApplyResult> {
+  const settings = await getSettings(uid);
   const timeoutMs = settings.playwrightTimeoutMs || DEFAULT_TIMEOUT_MS;
-  const resume = await loadPrimaryResumeProfile();
+  const resume = await loadPrimaryResumeProfile(uid);
 
   if (!resume) {
     throw new Error("No ResumeProfile found. Upload a resume before starting an application.");
