@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getAuth } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/firebase";
 import { getStoredApplications, updateApplicationStatus, updateApplicationNotes } from "@/services/apply/tracker";
 import { ApplicationStatus } from "@/types/application";
 
@@ -16,16 +16,15 @@ const notesSchema = z.object({
   notes: z.string(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const applications = await getStoredApplications(user.uid);
+    const applications = await getStoredApplications(authResult.uid);
     return NextResponse.json({ success: true, applications });
   } catch (error) {
     return NextResponse.json(
@@ -40,10 +39,9 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
@@ -51,12 +49,12 @@ export async function PATCH(request: Request) {
 
     if ("notes" in body) {
       const { jobId, notes } = notesSchema.parse(body);
-      const application = await updateApplicationNotes(user.uid, jobId, notes);
+      const application = await updateApplicationNotes(authResult.uid, jobId, notes);
       return NextResponse.json({ success: true, application });
     }
 
     const { jobId, status, note } = statusSchema.parse(body);
-    const application = await updateApplicationStatus(user.uid, jobId, status, note);
+    const application = await updateApplicationStatus(authResult.uid, jobId, status, note);
     return NextResponse.json({ success: true, application });
   } catch (error) {
     if (error instanceof z.ZodError) {

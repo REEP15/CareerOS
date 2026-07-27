@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getAuth } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/firebase";
 import { upsertApplication } from "@/services/apply/tracker";
 import { generateTailoredResume } from "@/services/tailoring/tailor";
 import { loadApplicationPackage } from "@/services/apply/tracker";
@@ -13,18 +13,17 @@ const requestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const { jobId } = requestSchema.parse(await request.json());
-    const applicationPackage = await loadApplicationPackage(user.uid, jobId);
-    const tailoredResume = await generateTailoredResume(user.uid, applicationPackage.job, applicationPackage.match);
+    const applicationPackage = await loadApplicationPackage(authResult.uid, jobId);
+    const tailoredResume = await generateTailoredResume(authResult.uid, applicationPackage.job, applicationPackage.match);
 
-    await upsertApplication(user.uid, {
+    await upsertApplication(authResult.uid, {
       jobId,
       resumeVersion: tailoredResume.versionLabel,
       status: applicationPackage.coverLetter ? ApplicationStatus.READY : ApplicationStatus.PREPARING,

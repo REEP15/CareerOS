@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { getAuth } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/firebase";
 import { getStoredMatches } from "@/services/matcher/matcher";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const matches = await getStoredMatches(user.uid);
+    const matches = await getStoredMatches(authResult.uid);
     return NextResponse.json({ success: true, matches });
   } catch (error) {
     return NextResponse.json(

@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
-import { getAuth } from "@/lib/firebase";
-import { getMission } from "@/services/missions/missions";
+import { verifyAuthToken } from '@/lib/firebase';
+import { getMission } from '@/services/missions/missions';
 
 export async function GET(
   request: Request,
@@ -9,17 +9,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    if (!authResult) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const mission = await getMission(user.uid, id);
+    const mission = await getMission(authResult.uid, id);
 
     if (!mission) {
-      return NextResponse.json({ success: false, error: "Mission not found" }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Mission not found' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true, mission });
@@ -27,7 +26,7 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to fetch mission",
+        error: error instanceof Error ? error.message : 'Failed to fetch mission',
       },
       { status: 500 },
     );

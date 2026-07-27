@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getAuth } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/firebase";
 import { getTailoredResumeVersions } from "@/services/tailoring/tailor";
 
 export async function GET(
@@ -9,14 +9,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const versions = await getTailoredResumeVersions(user.uid, id);
+    const versions = await getTailoredResumeVersions(authResult.uid, id);
     return NextResponse.json({ success: true, versions });
   } catch (error) {
     return NextResponse.json(

@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { getAuth } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/firebase";
 import { getStoredJobs } from "@/services/collector/save";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const jobs = await getStoredJobs(user.uid);
+    const jobs = await getStoredJobs(authResult.uid);
     return NextResponse.json({ success: true, jobs });
   } catch (error) {
     return NextResponse.json(

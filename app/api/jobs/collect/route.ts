@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getAuth } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/firebase";
 import { collectors } from "@/services/collector/registry";
 import { dedupeJobs } from "@/services/collector/normalize";
 import { saveCollectedJobs } from "@/services/collector/save";
@@ -8,16 +8,17 @@ import { getActiveMissions } from "@/services/missions/missions";
 import { createNotification } from "@/services/notifications/notifications";
 import { NotificationType } from "@/types/notification";
 
-export async function POST() {
+export async function POST(request: Request) {
+  let authResult: { uid: string } | null = null;
+  
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const activeMissions = await getActiveMissions(user.uid);
+    const activeMissions = await getActiveMissions(authResult.uid);
     const collectedGroups = await Promise.all(collectors.map((collector) => collector.collect()));
     let mergedJobs = collectedGroups.flat();
 
@@ -53,9 +54,9 @@ export async function POST() {
     }
 
     const { jobs: uniqueJobs } = dedupeJobs(mergedJobs);
-    const result = await saveCollectedJobs(user.uid, uniqueJobs);
+    const result = await saveCollectedJobs(authResult.uid, uniqueJobs);
 
-    await createNotification(user.uid, {
+    await createNotification(authResult.uid, {
       type: NotificationType.COLLECTION_FINISHED,
       title: "Job Collection Complete",
       message: `Added ${result.added} new jobs from ${collectors.length} collectors.`,
@@ -71,11 +72,8 @@ export async function POST() {
       missionFiltered: activeMissions.length > 0,
     });
   } catch (error) {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (user) {
-      await createNotification(user.uid, {
+    if (authResult) {
+      await createNotification(authResult.uid, {
         type: NotificationType.ERROR,
         title: "Collection Failed",
         message: error instanceof Error ? error.message : "Job collection failed.",

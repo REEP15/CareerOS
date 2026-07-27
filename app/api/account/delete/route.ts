@@ -2,15 +2,14 @@ import { NextResponse } from "next/server";
 import { deleteUser } from "firebase/auth";
 import { collection, getDocs, writeBatch } from "firebase/firestore";
 
-import { getAuth, getDb, isFirebaseConfigured } from "@/lib/firebase";
+import { getAuth, getDb, isFirebaseConfigured, verifyAuthToken } from "@/lib/firebase";
 import { USER_COLLECTIONS } from "@/lib/firebase";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
@@ -18,7 +17,7 @@ export async function POST() {
       return NextResponse.json({ success: false, error: "Firebase not configured" }, { status: 500 });
     }
 
-    const uid = user.uid;
+    const uid = authResult.uid;
     const db = getDb();
 
     // Delete all user data from Firestore
@@ -49,8 +48,12 @@ export async function POST() {
 
     await batch.commit();
 
-    // Delete Firebase Auth user
-    await deleteUser(user);
+    // Delete Firebase Auth user - need to get the actual user object
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (user) {
+      await deleteUser(user);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

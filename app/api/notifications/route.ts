@@ -1,19 +1,18 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getAuth } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/firebase";
 import { getNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } from "@/services/notifications/notifications";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const [notifications, unreadCount] = await Promise.all([getNotifications(user.uid), getUnreadCount(user.uid)]);
+    const [notifications, unreadCount] = await Promise.all([getNotifications(authResult.uid), getUnreadCount(authResult.uid)]);
     return NextResponse.json({ success: true, notifications, unreadCount });
   } catch (error) {
     return NextResponse.json(
@@ -33,22 +32,21 @@ const patchSchema = z.object({
 
 export async function PATCH(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const body = patchSchema.parse(await request.json());
 
     if (body.markAll) {
-      await markAllNotificationsRead(user.uid);
+      await markAllNotificationsRead(authResult.uid);
       return NextResponse.json({ success: true });
     }
 
     if (body.id) {
-      await markNotificationRead(user.uid, body.id);
+      await markNotificationRead(authResult.uid, body.id);
       return NextResponse.json({ success: true });
     }
 

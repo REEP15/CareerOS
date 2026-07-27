@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getAuth } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/firebase";
 import { runCollectors, runMatcher, refreshDashboard } from "@/services/scheduler/scheduler";
 
 const actionSchema = z.enum(["collect", "match", "dashboard", "all"]);
 
 export async function POST(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
@@ -19,24 +18,24 @@ export async function POST(request: Request) {
     const action = body.action ?? "all";
 
     if (action === "collect") {
-      const result = await runCollectors(user.uid);
+      const result = await runCollectors(authResult.uid);
       return NextResponse.json({ success: true, result });
     }
 
     if (action === "match") {
-      const result = await runMatcher(user.uid);
+      const result = await runMatcher(authResult.uid);
       return NextResponse.json({ success: true, result });
     }
 
     if (action === "dashboard") {
-      const result = await refreshDashboard(user.uid);
+      const result = await refreshDashboard(authResult.uid);
       return NextResponse.json({ success: true, result });
     }
 
     const [collectors, matcher, dashboard] = await Promise.all([
-      runCollectors(user.uid),
-      runMatcher(user.uid),
-      refreshDashboard(user.uid),
+      runCollectors(authResult.uid),
+      runMatcher(authResult.uid),
+      refreshDashboard(authResult.uid),
     ]);
 
     return NextResponse.json({

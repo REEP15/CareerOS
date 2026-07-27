@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { getAuth } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/firebase";
 import { loadPrimaryResumeProfile, loadStoredJobs, matchJob, saveMatchResults } from "@/services/matcher/matcher";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const resume = await loadPrimaryResumeProfile(user.uid);
+    const resume = await loadPrimaryResumeProfile(authResult.uid);
 
     if (!resume) {
       return NextResponse.json(
@@ -24,7 +23,7 @@ export async function POST() {
       );
     }
 
-    const jobs = await loadStoredJobs(user.uid);
+    const jobs = await loadStoredJobs(authResult.uid);
 
     if (jobs.length === 0) {
       return NextResponse.json(
@@ -37,7 +36,7 @@ export async function POST() {
     }
 
     const results = await Promise.all(jobs.map((job) => matchJob(resume, job)));
-    await saveMatchResults(user.uid, results);
+    await saveMatchResults(authResult.uid, results);
 
     const recommended = results.filter((result) => result.recommended).length;
     const averageScore =

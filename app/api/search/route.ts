@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getAuth } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/firebase";
 import { globalSearch } from "@/services/search/search";
 
 const querySchema = z.object({
@@ -11,10 +11,9 @@ const querySchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
@@ -24,7 +23,7 @@ export async function GET(request: Request) {
       limit: searchParams.get("limit") ?? undefined,
     });
 
-    const results = await globalSearch(user.uid, q, limit ?? 20);
+    const results = await globalSearch(authResult.uid, q, limit ?? 20);
 
     return NextResponse.json({ success: true, results });
   } catch (error) {
