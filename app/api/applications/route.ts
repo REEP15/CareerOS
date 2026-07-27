@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAuth } from "@/lib/firebase";
-import { updateApplicationStatus, updateApplicationNotes } from "@/services/apply/tracker";
+import { getStoredApplications, updateApplicationStatus, updateApplicationNotes } from "@/services/apply/tracker";
 import { ApplicationStatus } from "@/types/application";
 
 const statusSchema = z.object({
@@ -15,6 +15,28 @@ const notesSchema = z.object({
   jobId: z.string().min(1),
   notes: z.string(),
 });
+
+export async function GET() {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const applications = await getStoredApplications(user.uid);
+    return NextResponse.json({ success: true, applications });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch applications",
+      },
+      { status: 500 },
+    );
+  }
+}
 
 export async function PATCH(request: Request) {
   try {

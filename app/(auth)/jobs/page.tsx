@@ -4,11 +4,6 @@ import { useEffect, useState } from "react";
 
 import { JobsCollectorPanel } from "@/components/jobs-collector-panel";
 import { PageHeader } from "@/components/page-header";
-import { getStoredApplications } from "@/services/apply/tracker";
-import { getStoredJobs } from "@/services/collector/save";
-import { getCoverLetters } from "@/services/coverLetter/generator";
-import { getStoredMatches } from "@/services/matcher/matcher";
-import { getTailoredResumes } from "@/services/tailoring/tailor";
 import { useAuth } from "@/components/auth-provider";
 import type { JobPosting } from "@/types/job";
 
@@ -27,26 +22,32 @@ export default function JobsPage() {
   useEffect(() => {
     if (!loading && user) {
       Promise.all([
-        getStoredJobs(user.uid),
-        getStoredMatches(user.uid),
-        getTailoredResumes(user.uid),
-        getCoverLetters(user.uid),
-        getStoredApplications(user.uid),
-      ]).then(([jobs, matches, tailoredResumes, coverLetters, applications]) => {
-        const matchesByJobId = new Map(matches.map((match) => [match.jobId, match]));
-        const tailoredResumesByJobId = new Map(tailoredResumes.map((resume) => [resume.jobId, resume]));
-        const coverLettersByJobId = new Map(coverLetters.map((coverLetter) => [coverLetter.jobId, coverLetter]));
-        const applicationsByJobId = new Map(applications.map((application) => [application.jobId, application]));
+        fetch("/api/jobs").then((res) => res.json()),
+        fetch("/api/matches").then((res) => res.json()),
+        fetch("/api/tailored-resumes").then((res) => res.json()),
+        fetch("/api/cover-letters").then((res) => res.json()),
+        fetch("/api/applications").then((res) => res.json()),
+      ]).then(([jobsRes, matchesRes, resumesRes, coverLettersRes, applicationsRes]) => {
+        const jobs = jobsRes.success ? jobsRes.jobs : [];
+        const matches = matchesRes.success ? matchesRes.matches : [];
+        const tailoredResumes = resumesRes.success ? resumesRes.resumes : [];
+        const coverLetters = coverLettersRes.success ? coverLettersRes.coverLetters : [];
+        const applications = applicationsRes.success ? applicationsRes.applications : [];
+        
+        const matchesByJobId = new Map(matches.map((match: any) => [match.jobId, match]));
+        const tailoredResumesByJobId = new Map(tailoredResumes.map((resume: any) => [resume.jobId, resume]));
+        const coverLettersByJobId = new Map(coverLetters.map((coverLetter: any) => [coverLetter.jobId, coverLetter]));
+        const applicationsByJobId = new Map(applications.map((application: any) => [application.jobId, application]));
         
         const jobsData = jobs
-          .map((job) => ({
+          .map((job: any) => ({
             ...job,
             application: applicationsByJobId.get(job.id) ?? null,
             coverLetter: coverLettersByJobId.get(job.id) ?? null,
             match: matchesByJobId.get(job.id) ?? null,
             tailoredResume: tailoredResumesByJobId.get(job.id) ?? null,
           }))
-          .sort((left, right) => {
+          .sort((left: any, right: any) => {
             const leftScore = left.match?.overallScore ?? -1;
             const rightScore = right.match?.overallScore ?? -1;
             return rightScore - leftScore;

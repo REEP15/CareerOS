@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 import { DashboardContent } from "@/components/dashboard-content";
 import { PageHeader } from "@/components/page-header";
-import { getDashboardMetrics } from "@/services/dashboard/metrics";
 import { useAuth } from "@/components/auth-provider";
 import type { DashboardMetrics } from "@/services/dashboard/metrics";
 
@@ -15,7 +14,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      getDashboardMetrics(user.uid).then(setMetrics).finally(() => setIsLoading(false));
+      fetch("/api/dashboard")
+        .then((res) => res.json())
+        .then((payload) => {
+          if (payload.success) {
+            setMetrics(payload.metrics);
+          }
+        })
+        .finally(() => setIsLoading(false));
     } else if (!loading && !user) {
       setIsLoading(false);
     }

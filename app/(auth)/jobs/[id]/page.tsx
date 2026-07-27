@@ -5,9 +5,6 @@ import { notFound } from "next/navigation";
 
 import { JobDetailPanel } from "@/components/job-detail-panel";
 import { PageHeader } from "@/components/page-header";
-import { loadApplicationPackage } from "@/services/apply/tracker";
-import { getCoverLetterVersions } from "@/services/coverLetter/generator";
-import { getTailoredResumeVersions } from "@/services/tailoring/tailor";
 import { useAuth } from "@/components/auth-provider";
 import type { ApplicationPackage } from "@/services/apply/tracker";
 import type { TailoredResume } from "@/types/tailoredResume";
@@ -30,13 +27,19 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   useEffect(() => {
     if (!loading && user && id) {
       Promise.all([
-        loadApplicationPackage(user.uid, id),
-        getTailoredResumeVersions(user.uid, id),
-        getCoverLetterVersions(user.uid, id),
-      ]).then(([pkg, resumes, coverLetters]) => {
-        setApplicationPackage(pkg);
-        setResumeVersions(resumes);
-        setCoverLetterVersions(coverLetters);
+        fetch(`/api/jobs/${id}`).then((res) => res.json()),
+        fetch(`/api/tailored-resumes/${id}`).then((res) => res.json()),
+        fetch(`/api/cover-letters/${id}`).then((res) => res.json()),
+      ]).then(([pkgRes, resumesRes, coverLettersRes]) => {
+        if (pkgRes.success) {
+          setApplicationPackage(pkgRes.package);
+        }
+        if (resumesRes.success) {
+          setResumeVersions(resumesRes.versions);
+        }
+        if (coverLettersRes.success) {
+          setCoverLetterVersions(coverLettersRes.versions);
+        }
       }).finally(() => setIsLoading(false));
     } else if (!loading && !user) {
       setIsLoading(false);

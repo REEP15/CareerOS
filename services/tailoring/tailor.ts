@@ -10,17 +10,12 @@ import {
 } from "@/services/artifacts/versioning";
 import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
 import { parseTailoredResumeResponse } from "@/services/tailoring/parser";
+import { writeTextPdf } from "@/services/tailoring/pdf";
 import { createResumeTailoringPrompt } from "@/services/tailoring/prompts";
 import type { JobPosting } from "@/types/job";
 import type { MatchResult } from "@/types/match";
 import type { ResumeProfile } from "@/types/resume";
 import type { ResumeDiff, TailoredResume } from "@/types/tailoredResume";
-
-// Lazy import writeTextPdf to avoid client-side bundling of node:fs/promises
-async function getWriteTextPdf() {
-  const { writeTextPdf } = await import("@/services/tailoring/pdf");
-  return writeTextPdf;
-}
 
 export async function generateTailoredResume(uid: string, job: JobPosting, match: MatchResult | null) {
   const resume = await loadPrimaryResumeProfile(uid);
@@ -89,7 +84,6 @@ async function createTailoredResume(uid: string, resume: ResumeProfile, job: Job
   const parsed = response ? parseTailoredResumeResponse(response) : buildFallbackTailoredResume(resume, job, match);
   const profile = enforceNoFabrication(resume, parsed.profile);
   const diff = normalizeDiff(resume, profile, parsed.diff);
-  const writeTextPdf = await getWriteTextPdf();
   const { pdfUrl } = await writeTextPdf({
     fileName: buildVersionedFileName(job.id, "resume", version),
     lines: resumeProfileToPdfLines(profile, job),

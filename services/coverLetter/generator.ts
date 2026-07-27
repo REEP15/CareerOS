@@ -11,16 +11,11 @@ import {
 import { createCoverLetterPrompt } from "@/services/coverLetter/prompts";
 import { parseCoverLetterResponse } from "@/services/coverLetter/parser";
 import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
+import { writeTextPdf } from "@/services/tailoring/pdf";
 import type { CoverLetter } from "@/types/coverLetter";
 import type { JobPosting } from "@/types/job";
 import type { MatchResult } from "@/types/match";
 import type { ResumeProfile } from "@/types/resume";
-
-// Lazy import writeTextPdf to avoid client-side bundling of node:fs/promises
-async function getWriteTextPdf() {
-  const { writeTextPdf } = await import("@/services/tailoring/pdf");
-  return writeTextPdf;
-}
 
 export async function generateCoverLetter(uid: string, job: JobPosting, match: MatchResult | null) {
   const resume = await loadPrimaryResumeProfile(uid);
@@ -88,7 +83,6 @@ async function createCoverLetter(uid: string, resume: ResumeProfile, job: JobPos
   const response = provider ? await provider.generateCoverLetter({ prompt, resume, job, match }) : null;
   const parsed = response ? parseCoverLetterResponse(response) : buildFallbackCoverLetter(resume, job, match);
   const content = parsed.content;
-  const writeTextPdf = await getWriteTextPdf();
   const { pdfUrl } = await writeTextPdf({
     fileName: buildVersionedFileName(job.id, "cover-letter", version),
     lines: coverLetterToPdfLines(content),

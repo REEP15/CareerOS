@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
 import { MissionDetailPanel } from "@/components/mission-detail-panel";
-import { getMission } from "@/services/missions/missions";
 import { useAuth } from "@/components/auth-provider";
 import type { Mission } from "@/types/mission";
 
@@ -23,7 +22,14 @@ export default function MissionDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     if (!loading && user && id) {
-      getMission(user.uid, id).then(setMission).finally(() => setIsLoading(false));
+      fetch(`/api/missions/${id}`)
+        .then((res) => res.json())
+        .then((payload) => {
+          if (payload.success) {
+            setMission(payload.mission);
+          }
+        })
+        .finally(() => setIsLoading(false));
     } else if (!loading && !user) {
       setIsLoading(false);
     }
