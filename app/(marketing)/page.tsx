@@ -91,17 +91,17 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Trusted by job seekers worldwide
+              What CareerOS helps you do
             </h2>
             <p className="text-lg text-muted-foreground">
-              Real results from real users
+              A complete toolkit for your job search
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard value="25,000+" label="Jobs Matched" />
-            <MetricCard value="100,000+" label="Applications Managed" />
-            <MetricCard value="50,000+" label="Documents Generated" />
-            <MetricCard value="91%" label="Average Match Score" />
+            <MetricCard value="Discover" label="Jobs" />
+            <MetricCard value="Match" label="Resumes" />
+            <MetricCard value="Generate" label="Cover Letters" />
+            <MetricCard value="Track" label="Applications" />
           </div>
         </div>
       </section>
@@ -166,27 +166,27 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              What our users say
+              Why CareerOS
             </h2>
             <p className="text-lg text-muted-foreground">
-              Success stories from CareerOS users
+              Built for serious job seekers
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <TestimonialCard
-              name="Sarah Chen"
-              role="Software Engineer"
-              content="CareerOS helped me land my dream job at a top tech company. The AI matching was incredibly accurate, and the generated cover letters saved me hours of work."
+              name="Multi-AI Support"
+              role="Flexibility"
+              content="Use multiple AI providers including ChatGPT, Gemini, and DeepSeek for comprehensive analysis and generation capabilities."
             />
             <TestimonialCard
-              name="Michael Rodriguez"
-              role="Product Manager"
-              content="The application tracking feature alone is worth it. I can finally see where I am in the pipeline with every company. The analytics helped me improve my approach."
+              name="Privacy First"
+              role="Security"
+              content="Your data stays in your Firebase instance. We don't store your resumes or personal information on our servers."
             />
             <TestimonialCard
-              name="Emily Watson"
-              role="Data Scientist"
-              content="I was skeptical about AI-generated resumes, but CareerOS proved me wrong. My resume got past ATS systems that had rejected me before. Highly recommend!"
+              name="Open Source"
+              role="Transparency"
+              content="CareerOS is open source. Customize it to fit your needs, contribute improvements, or run it entirely self-hosted."
             />
           </div>
         </div>
@@ -197,15 +197,15 @@ export default function LandingPage() {
         <div className="mx-auto max-w-4xl">
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="text-center">
-              <CardTitle className="text-3xl">Ready to transform your job search?</CardTitle>
+              <CardTitle className="text-3xl">Ready to take control of your job search?</CardTitle>
               <CardDescription className="text-lg">
-                Join thousands of job seekers who have accelerated their careers with CareerOS
+                Start organizing, tracking, and optimizing your applications today
               </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center">
               <Link href="/signup">
                 <Button size="lg" className="gap-2">
-                  Get Started Free
+                  Get Started
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>

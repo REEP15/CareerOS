@@ -78,7 +78,6 @@ export function DashboardContent({ metrics }: { metrics: DashboardMetrics }) {
         }
 
         toast.success(successMessage);
-        window.location.reload();
       } catch {
         toast.error("An unexpected error occurred.");
       }

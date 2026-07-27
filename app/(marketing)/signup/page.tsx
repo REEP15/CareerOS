@@ -49,7 +49,7 @@ export default function SignupPage() {
 
     try {
       if (!isFirebaseConfigured()) {
-        toast.success("Account created successfully (demo mode - Firebase not configured).");
+        toast.success("Account created successfully. Configure Firebase for full authentication.");
         router.push("/dashboard");
         return;
       }
@@ -137,7 +137,7 @@ export default function SignupPage() {
             </Button>
             {!isFirebaseConfigured() && (
               <p className="text-xs text-center text-muted-foreground">
-                Demo mode - Firebase not configured
+                Firebase not configured - Configure environment variables for full authentication
               </p>
             )}
           </form>

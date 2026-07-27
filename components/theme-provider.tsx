@@ -28,9 +28,14 @@ export function ThemeProvider({
   storageKey = "careeros-theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (typeof window !== "undefined" && (localStorage.getItem(storageKey) as Theme)) || defaultTheme,
-  );
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") return defaultTheme;
+    const stored = localStorage.getItem(storageKey) as Theme | null;
+    if (stored && (stored === "light" || stored === "dark" || stored === "system")) {
+      return stored;
+    }
+    return defaultTheme;
+  });
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -40,17 +45,16 @@ export function ThemeProvider({
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
       root.classList.add(systemTheme);
-      return;
+    } else {
+      root.classList.add(theme);
     }
-
-    root.classList.add(theme);
   }, [theme]);
 
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
+    setTheme: (newTheme: Theme) => {
+      localStorage.setItem(storageKey, newTheme);
+      setTheme(newTheme);
     },
   };
 

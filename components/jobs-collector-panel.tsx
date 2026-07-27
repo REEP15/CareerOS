@@ -273,14 +273,16 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                 </option>
               ))}
             </Select>
-            <Select value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)}>
-              <option value="all">All locations</option>
-              {locations.map((location) => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </Select>
+            {remoteFilter !== "remote" && (
+              <Select value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)}>
+                <option value="all">All locations</option>
+                {locations.map((location) => (
+                  <option key={location} value={location}>
+                    {location}
+                  </option>
+                ))}
+              </Select>
+            )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Select value={remoteFilter} onChange={(event) => setRemoteFilter(event.target.value)}>

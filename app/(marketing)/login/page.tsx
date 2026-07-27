@@ -38,7 +38,7 @@ export default function LoginPage() {
 
     try {
       if (!isFirebaseConfigured()) {
-        toast.success("Login successful (demo mode - Firebase not configured).");
+        toast.success("Login successful. Configure Firebase for full authentication.");
         router.push("/dashboard");
         return;
       }
@@ -119,7 +119,7 @@ export default function LoginPage() {
             </Button>
             {!isFirebaseConfigured() && (
               <p className="text-xs text-center text-muted-foreground">
-                Demo mode - Firebase not configured
+                Firebase not configured - Configure environment variables for full authentication
               </p>
             )}
           </form>

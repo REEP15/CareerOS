@@ -1,11 +1,16 @@
+"use client";
+
 import type { ReactNode } from "react";
-import { BriefcaseBusiness, FileText, LayoutDashboard, Menu, Settings, Target } from "lucide-react";
+import { BriefcaseBusiness, FileText, LayoutDashboard, LogOut, Menu, Settings, Target } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 import { GlobalSearch } from "@/components/global-search";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/components/auth-provider";
 import { cn } from "@/lib/utils";
 
 const navigationItems = [
@@ -38,6 +43,19 @@ function SidebarNavigation({ mobile = false }: { mobile?: boolean }) {
 }
 
 function SidebarPanel() {
+  const router = useRouter();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Logged out successfully");
+      router.push("/");
+    } catch {
+      toast.error("Failed to logout");
+    }
+  };
+
   return (
     <div className="flex h-full flex-col">
       <div className="space-y-3 px-6 py-6">
@@ -54,6 +72,16 @@ function SidebarPanel() {
       <Separator className="bg-white/10" />
       <div className="flex-1 px-4 py-4">
         <SidebarNavigation />
+      </div>
+      <div className="px-4 py-4">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Logout</span>
+        </Button>
       </div>
       <div className="px-6 py-5 text-xs text-sidebar-muted">
         Phase 1 focuses on structure, storage, and the Resume Brain.

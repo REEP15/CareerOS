@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
 
     try {
       if (!isFirebaseConfigured()) {
-        toast.success("Password reset email sent (demo mode - Firebase not configured).");
+        toast.success("Password reset email sent. Configure Firebase for full authentication.");
         setIsSuccess(true);
         return;
       }
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
               </Button>
               {!isFirebaseConfigured() && (
                 <p className="text-xs text-center text-muted-foreground">
-                  Demo mode - Firebase not configured
+                  Firebase not configured - Configure environment variables for full authentication
                 </p>
               )}
             </form>
