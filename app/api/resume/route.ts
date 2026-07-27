@@ -3,7 +3,8 @@ import { doc, setDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { z } from "zod";
 
-import { getDb, getFileStorage, isFirebaseConfigured, verifyAuthToken } from "@/lib/firebase";
+import { getDb, getFileStorage, isFirebaseConfigured } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/server-auth";
 import { parseResume } from "@/services/resume/parser";
 
 const fileSchema = z

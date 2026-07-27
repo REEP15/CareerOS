@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
-import { verifyAuthToken } from '@/lib/firebase';
-import { getMission } from '@/services/missions/missions';
+import { verifyAuthToken } from "@/lib/server-auth";
+import { getMission } from "@/services/missions/missions";
 
 export async function GET(
   request: Request,

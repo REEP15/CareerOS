@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { verifyAuthToken } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/server-auth";
 import { getCoverLetterVersions } from "@/services/coverLetter/generator";
 
 export async function GET(

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { verifyAuthToken } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/server-auth";
 import { upsertApplication } from "@/services/apply/tracker";
 import { generateTailoredResume } from "@/services/tailoring/tailor";
 import { loadApplicationPackage } from "@/services/apply/tracker";

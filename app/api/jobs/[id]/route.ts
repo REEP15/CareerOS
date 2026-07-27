@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { verifyAuthToken } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/server-auth";
 import { loadApplicationPackage } from "@/services/apply/tracker";
 
 export async function GET(

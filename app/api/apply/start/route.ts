@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { verifyAuthToken } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/server-auth";
 import { startApplication } from "@/services/apply/browser";
 
 const requestSchema = z.object({

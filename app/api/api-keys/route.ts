@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { verifyAuthToken } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/server-auth";
 import { hasApiKey, saveApiKey } from "@/services/api-keys/api-keys";
 
 const saveSchema = z.object({

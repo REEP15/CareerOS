@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { verifyAuthToken } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/server-auth";
 import { getStoredMatches } from "@/services/matcher/matcher";
 
 export async function GET(request: Request) {

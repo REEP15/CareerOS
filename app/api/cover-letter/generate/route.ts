@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { verifyAuthToken } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/server-auth";
 import { generateCoverLetter } from "@/services/coverLetter/generator";
 import { loadApplicationPackage, upsertApplication } from "@/services/apply/tracker";
 import { ApplicationStatus } from "@/types/application";

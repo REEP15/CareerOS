@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { verifyAuthToken } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/server-auth";
 import { getTailoredResumeVersions } from "@/services/tailoring/tailor";
 
 export async function GET(

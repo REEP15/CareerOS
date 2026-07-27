@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { verifyAuthToken } from "@/lib/firebase";
+import { verifyAuthToken } from "@/lib/server-auth";
 import { collectors } from "@/services/collector/registry";
 import { dedupeJobs } from "@/services/collector/normalize";
 import { saveCollectedJobs } from "@/services/collector/save";
