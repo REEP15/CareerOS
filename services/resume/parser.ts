@@ -1,4 +1,5 @@
 import { getResumeExtractionProvider } from "@/lib/ai";
+import { parsePdf } from "@/lib/pdf-parse-wrapper";
 import type { Education, Experience, Project, ResumeProfile } from "@/types/resume";
 
 const SECTION_MARKERS = ["experience", "projects", "education", "skills", "certifications"] as const;
@@ -41,8 +42,7 @@ export async function parseResume(file: File): Promise<ResumeProfile> {
 
 async function extractTextFromPdf(file: File) {
   const data = Buffer.from(await file.arrayBuffer());
-  const { default: pdf } = await import("pdf-parse");
-  const result = (await pdf(data)) as PdfParseResult;
+  const result = await parsePdf(data);
   return result.text ?? "";
 }
 
