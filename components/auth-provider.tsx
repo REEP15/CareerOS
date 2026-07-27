@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
+import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 
 import { getAuth as getFirebaseAuth, isFirebaseConfigured } from "@/lib/firebase";
 
@@ -9,6 +9,8 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -20,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isFirebaseConfigured()) {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 0);
       return;
     }
 
@@ -58,13 +60,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
+  const signUp = async (email: string, password: string) => {
+    const auth = getFirebaseAuth();
+    await createUserWithEmailAndPassword(auth, email, password);
+  };
+
+  const resetPassword = async (email: string) => {
+    const auth = getFirebaseAuth();
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const logout = async () => {
     const auth = getFirebaseAuth();
     await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, logout }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -11,18 +12,36 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/auth-provider";
 import { isFirebaseConfigured } from "@/lib/firebase";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
-  const { signIn, loading } = useAuth();
+  const { loading, user, signUp } = useAuth();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user && !loading) {
+      router.push("/dashboard");
+    }
+  }, [user, loading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
-      toast.error("Please enter both email and password.");
+    if (!name || !email || !password || !confirmPassword) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters.");
       return;
     }
 
@@ -30,16 +49,16 @@ export default function LoginPage() {
 
     try {
       if (!isFirebaseConfigured()) {
-        toast.success("Login successful (demo mode - Firebase not configured).");
+        toast.success("Account created successfully (demo mode - Firebase not configured).");
         router.push("/dashboard");
         return;
       }
       
-      await signIn(email, password);
-      toast.success("Login successful.");
+      await signUp(email, password);
+      toast.success("Account created successfully.");
       router.push("/dashboard");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to login. Please check your credentials.");
+      toast.error(error instanceof Error ? error.message : "Failed to create account. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -60,11 +79,23 @@ export default function LoginPage() {
           <div className="mb-4 inline-flex w-fit items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium tracking-[0.2em] text-primary uppercase mx-auto">
             CareerOS
           </div>
-          <CardTitle className="text-2xl font-semibold">Welcome back</CardTitle>
-          <CardDescription>Sign in to your account to continue</CardDescription>
+          <CardTitle className="text-2xl font-semibold">Create an account</CardTitle>
+          <CardDescription>Start your AI-powered career journey</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -89,8 +120,20 @@ export default function LoginPage() {
                 required
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in..." : "Sign in"}
+              {isSubmitting ? "Creating account..." : "Create account"}
             </Button>
             {!isFirebaseConfigured() && (
               <p className="text-xs text-center text-muted-foreground">
@@ -98,6 +141,12 @@ export default function LoginPage() {
               </p>
             )}
           </form>
+          <div className="mt-4 text-center text-sm">
+            <span className="text-muted-foreground">Already have an account? </span>
+            <Link href="/login" className="text-primary hover:underline">
+              Sign in
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
