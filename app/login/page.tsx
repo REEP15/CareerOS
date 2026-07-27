@@ -1,0 +1,105 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/components/auth-provider";
+import { isFirebaseConfigured } from "@/lib/firebase";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const { signIn, loading } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !password) {
+      toast.error("Please enter both email and password.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      if (!isFirebaseConfigured()) {
+        toast.success("Login successful (demo mode - Firebase not configured).");
+        router.push("/dashboard");
+        return;
+      }
+      
+      await signIn(email, password);
+      toast.success("Login successful.");
+      router.push("/dashboard");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to login. Please check your credentials.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading && isFirebaseConfigured()) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1 text-center">
+          <div className="mb-4 inline-flex w-fit items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium tracking-[0.2em] text-primary uppercase mx-auto">
+            CareerOS
+          </div>
+          <CardTitle className="text-2xl font-semibold">Welcome back</CardTitle>
+          <CardDescription>Sign in to your account to continue</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Signing in..." : "Sign in"}
+            </Button>
+            {!isFirebaseConfigured() && (
+              <p className="text-xs text-center text-muted-foreground">
+                Demo mode - Firebase not configured
+              </p>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

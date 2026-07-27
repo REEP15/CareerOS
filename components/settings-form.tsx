@@ -8,15 +8,47 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useTheme } from "@/components/theme-provider";
 import type { AppSettings } from "@/types/settings";
 
 type SettingsResponse =
   | { success: true; settings: AppSettings }
   | { success: false; error: string };
 
+type ApiKeyCheckResponse =
+  | { success: true; hasKey: boolean }
+  | { success: false; error: string };
+
+type ApiKeyValidateResponse =
+  | { success: true; valid: true }
+  | { success: false; error: string };
+
 export function SettingsForm() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [apiKey, setApiKey] = useState("");
+  const [apiKeyStored, setApiKeyStored] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isValidating, setIsValidating] = useState(false);
+  const { setTheme } = useTheme();
+
+  const checkApiKey = async (provider: AppSettings["aiProvider"]): Promise<boolean> => {
+    if (provider === "none") {
+      setApiKeyStored(false);
+      return false;
+    }
+
+    try {
+      const response = await fetch(`/api/api-keys?provider=${provider}`);
+      const payload = (await response.json()) as ApiKeyCheckResponse;
+      if (payload.success) {
+        setApiKeyStored(payload.hasKey);
+        return payload.hasKey;
+      }
+    } catch {
+      setApiKeyStored(false);
+    }
+    return false;
+  };
 
   useEffect(() => {
     void fetch("/api/settings")
@@ -24,11 +56,75 @@ export function SettingsForm() {
       .then((payload: SettingsResponse) => {
         if (payload.success) {
           setSettings(payload.settings);
+          setTheme(payload.settings.theme);
+          void checkApiKey(payload.settings.aiProvider);
         }
       });
-  }, []);
+  }, [setTheme]);
 
-  const handleSave = () => {
+  const handleProviderChange = async (newProvider: AppSettings["aiProvider"]) => {
+    if (!settings) return;
+
+    setSettings({ ...settings, aiProvider: newProvider });
+
+    if (newProvider === "none") {
+      setApiKeyStored(false);
+      setApiKey("");
+      return;
+    }
+
+    const hasKey = await checkApiKey(newProvider);
+
+    if (hasKey) {
+      toast.success("AI provider changed successfully.");
+    } else {
+      toast.error("No API key found for this provider. Please add your API key.");
+    }
+  };
+
+  const handleSaveApiKey = async () => {
+    if (!settings || settings.aiProvider === "none" || !apiKey.trim()) {
+      return;
+    }
+
+    setIsValidating(true);
+
+    try {
+      const validateResponse = await fetch("/api/api-keys/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: settings.aiProvider, apiKey: apiKey.trim() }),
+      });
+      const validatePayload = (await validateResponse.json()) as ApiKeyValidateResponse;
+
+      if (!validateResponse.ok || !validatePayload.success) {
+        const errorMessage = validatePayload.success === false ? validatePayload.error : "Invalid API key or wrong AI provider selected.";
+        toast.error(errorMessage);
+        setIsValidating(false);
+        return;
+      }
+
+      const saveResponse = await fetch("/api/api-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: settings.aiProvider, apiKey: apiKey.trim() }),
+      });
+
+      if (saveResponse.ok) {
+        setApiKey("");
+        setApiKeyStored(true);
+        toast.success("API key saved successfully.");
+      } else {
+        toast.error("Failed to save API key.");
+      }
+    } catch {
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const handleSaveSettings = () => {
     if (!settings) {
       return;
     }
@@ -40,7 +136,6 @@ export function SettingsForm() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             aiProvider: settings.aiProvider,
-            aiModel: settings.aiModel,
             playwrightHeadless: settings.playwrightHeadless,
             playwrightTimeoutMs: settings.playwrightTimeoutMs,
             preferredLocations: settings.preferredLocations,
@@ -56,11 +151,18 @@ export function SettingsForm() {
         }
 
         setSettings(payload.settings);
+        setTheme(payload.settings.theme);
         toast.success("Settings saved.");
       } catch {
         toast.error("An unexpected error occurred.");
       }
     });
+  };
+
+  const handleThemeChange = (newTheme: AppSettings["theme"]) => {
+    if (!settings) return;
+    setSettings({ ...settings, theme: newTheme });
+    setTheme(newTheme);
   };
 
   if (!settings) {
@@ -89,31 +191,46 @@ export function SettingsForm() {
           <CardTitle>AI Provider</CardTitle>
           <CardDescription>Configure the AI provider for matching, tailoring, and cover letters</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="aiProvider">Provider</Label>
+            <Label htmlFor="aiProvider">AI Provider</Label>
             <Select
               id="aiProvider"
               value={settings.aiProvider}
               onChange={(event) =>
-                setSettings({ ...settings, aiProvider: event.target.value as AppSettings["aiProvider"] })
+                handleProviderChange(event.target.value as AppSettings["aiProvider"])
               }
             >
               <option value="none">None (heuristics)</option>
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="google">Google</option>
+              <option value="chatgpt">ChatGPT</option>
+              <option value="gemini">Gemini</option>
+              <option value="deepseek">DeepSeek</option>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="aiModel">Model</Label>
-            <Input
-              id="aiModel"
-              value={settings.aiModel}
-              onChange={(event) => setSettings({ ...settings, aiModel: event.target.value })}
-              placeholder="e.g. gpt-4o"
-            />
-          </div>
+
+          {settings.aiProvider !== "none" && (
+            <div className="space-y-2">
+              <Label htmlFor="apiKey">API Key</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="apiKey"
+                  type="password"
+                  value={apiKey}
+                  onChange={(event) => setApiKey(event.target.value)}
+                  placeholder={apiKeyStored ? "API Key Stored" : "Enter your API key"}
+                  disabled={apiKeyStored}
+                />
+                {!apiKeyStored && (
+                  <Button onClick={handleSaveApiKey} disabled={isValidating || !apiKey.trim()}>
+                    {isValidating ? "Validating..." : "Save"}
+                  </Button>
+                )}
+              </div>
+              {apiKeyStored && (
+                <p className="text-xs text-muted-foreground">API key is securely stored. You can change providers to enter a new key.</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -192,9 +309,7 @@ export function SettingsForm() {
             <Select
               id="theme"
               value={settings.theme}
-              onChange={(event) =>
-                setSettings({ ...settings, theme: event.target.value as AppSettings["theme"] })
-              }
+              onChange={(event) => handleThemeChange(event.target.value as AppSettings["theme"])}
             >
               <option value="system">System</option>
               <option value="light">Light</option>
@@ -204,7 +319,7 @@ export function SettingsForm() {
         </CardContent>
       </Card>
 
-      <Button onClick={handleSave} disabled={isPending}>
+      <Button onClick={handleSaveSettings} disabled={isPending}>
         {isPending ? "Saving..." : "Save Settings"}
       </Button>
     </div>

@@ -19,8 +19,7 @@ export async function GET() {
 }
 
 const settingsSchema = z.object({
-  aiProvider: z.enum(["openai", "anthropic", "google", "none"]).optional(),
-  aiModel: z.string().optional(),
+  aiProvider: z.enum(["chatgpt", "gemini", "deepseek", "none"]).optional(),
   playwrightHeadless: z.boolean().optional(),
   playwrightTimeoutMs: z.number().min(5000).max(300000).optional(),
   preferredLocations: z.array(z.string()).optional(),

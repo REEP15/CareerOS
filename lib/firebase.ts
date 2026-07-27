@@ -1,8 +1,10 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
+import { getAuth as firebaseGetAuth, type Auth } from "firebase/auth";
 import { collection, getFirestore, type CollectionReference, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 import type { Application } from "@/types/application";
+import type { ApiKeyStorage } from "@/types/api-keys";
 import type { CoverLetter } from "@/types/coverLetter";
 import type { JobPosting } from "@/types/job";
 import type { MatchResult } from "@/types/match";
@@ -31,6 +33,7 @@ export const COLLECTIONS = {
   settings: "settings",
   tailoredResumes: "tailoredResumes",
   notifications: "notifications",
+  apiKeys: "apiKeys",
 } as const;
 
 export function isFirebaseConfigured() {
@@ -51,6 +54,7 @@ function ensureFirebaseConfigured() {
 }
 
 let firebaseApp: FirebaseApp | null = null;
+let auth: Auth | null = null;
 let firestore: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
 
@@ -62,6 +66,16 @@ export function getFirebaseApp() {
   }
 
   return firebaseApp;
+}
+
+export function getAuth() {
+  ensureFirebaseConfigured();
+
+  if (!auth) {
+    auth = firebaseGetAuth(getFirebaseApp());
+  }
+
+  return auth;
 }
 
 export function getDb() {
@@ -114,6 +128,10 @@ export function getTailoredResumesCollection(): CollectionReference<TailoredResu
 
 export function getCoverLettersCollection(): CollectionReference<CoverLetter> {
   return collection(getDb(), COLLECTIONS.coverLetters) as CollectionReference<CoverLetter>;
+}
+
+export function getApiKeysCollection(): CollectionReference<ApiKeyStorage> {
+  return collection(getDb(), COLLECTIONS.apiKeys) as CollectionReference<ApiKeyStorage>;
 }
 
 export function createArtifactDocId(jobId: string, version: number) {

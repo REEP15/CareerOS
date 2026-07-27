@@ -4,7 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Toaster } from "react-hot-toast";
 
+import { AuthProvider } from "@/components/auth-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -21,16 +23,20 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        {children}
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            className: "text-sm",
-            duration: 4000,
-          }}
-        />
-      </ErrorBoundary>
+      <ThemeProvider defaultTheme="system" storageKey="careeros-theme">
+        <AuthProvider>
+          <ErrorBoundary>
+            {children}
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                className: "text-sm",
+                duration: 4000,
+              }}
+            />
+          </ErrorBoundary>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

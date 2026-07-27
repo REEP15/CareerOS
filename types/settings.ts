@@ -1,10 +1,9 @@
-export type AiProviderName = "openai" | "anthropic" | "google" | "none";
+export type AiProviderName = "chatgpt" | "gemini" | "deepseek" | "none";
 
 export interface AppSettings {
   id: string;
   firebaseConfigured: boolean;
   aiProvider: AiProviderName;
-  aiModel: string;
   playwrightHeadless: boolean;
   playwrightTimeoutMs: number;
   preferredLocations: string[];
@@ -16,7 +15,6 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: Omit<AppSettings, "id" | "updatedAt"> = {
   firebaseConfigured: false,
   aiProvider: "none",
-  aiModel: "",
   playwrightHeadless: false,
   playwrightTimeoutMs: 60_000,
   preferredLocations: [],

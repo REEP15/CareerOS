@@ -13,6 +13,8 @@ export default async function EditMissionPage({ params }: { params: Promise<{ id
   }
 
   const { createdAt, updatedAt, ...missionInput } = mission;
+  void createdAt;
+  void updatedAt;
 
   return (
     <div className="space-y-6">
