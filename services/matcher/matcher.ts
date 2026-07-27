@@ -1,10 +1,10 @@
 import { doc, getDoc, getDocs, orderBy, query, setDoc } from "firebase/firestore";
 
 import {
-  COLLECTIONS,
   getDb,
-  getJobsCollection,
-  getMatchesCollection,
+  getUserJobsCollection,
+  getUserMatchesCollection,
+  getUserResumeCollection,
   isFirebaseConfigured,
 } from "@/lib/firebase";
 import { parseMatchResponse } from "@/services/matcher/parser";
@@ -43,40 +43,40 @@ export async function matchJob(resume: ResumeProfile, job: JobPosting): Promise<
   };
 }
 
-export async function saveMatchResults(results: MatchResult[]) {
+export async function saveMatchResults(uid: string, results: MatchResult[]) {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase environment variables are missing.");
   }
 
   for (const result of results) {
-    await setDoc(doc(getDb(), COLLECTIONS.matches, result.jobId), result);
+    await setDoc(doc(getUserMatchesCollection(uid), result.jobId), result);
   }
 }
 
-export async function getStoredMatches(): Promise<MatchResult[]> {
+export async function getStoredMatches(uid: string): Promise<MatchResult[]> {
   if (!isFirebaseConfigured()) {
     return [];
   }
 
-  const snapshot = await getDocs(query(getMatchesCollection(), orderBy("overallScore", "desc")));
+  const snapshot = await getDocs(query(getUserMatchesCollection(uid), orderBy("overallScore", "desc")));
   return snapshot.docs.map((document) => document.data());
 }
 
-export async function getMatchForJob(jobId: string): Promise<MatchResult | null> {
+export async function getMatchForJob(uid: string, jobId: string): Promise<MatchResult | null> {
   if (!isFirebaseConfigured()) {
     return null;
   }
 
-  const snapshot = await getDoc(doc(getDb(), COLLECTIONS.matches, jobId));
+  const snapshot = await getDoc(doc(getUserMatchesCollection(uid), jobId));
   return snapshot.exists() ? (snapshot.data() as MatchResult) : null;
 }
 
-export async function loadPrimaryResumeProfile(): Promise<ResumeProfile | null> {
+export async function loadPrimaryResumeProfile(uid: string): Promise<ResumeProfile | null> {
   if (!isFirebaseConfigured()) {
     return null;
   }
 
-  const snapshot = await getDoc(doc(getDb(), COLLECTIONS.resume, "primary"));
+  const snapshot = await getDoc(doc(getUserResumeCollection(uid), "primary"));
 
   if (!snapshot.exists()) {
     return null;
@@ -85,12 +85,12 @@ export async function loadPrimaryResumeProfile(): Promise<ResumeProfile | null> 
   return snapshot.data() as ResumeProfile;
 }
 
-export async function loadStoredJobs(): Promise<JobPosting[]> {
+export async function loadStoredJobs(uid: string): Promise<JobPosting[]> {
   if (!isFirebaseConfigured()) {
     return [];
   }
 
-  const snapshot = await getDocs(query(getJobsCollection(), orderBy("scrapedAt", "desc")));
+  const snapshot = await getDocs(query(getUserJobsCollection(uid), orderBy("scrapedAt", "desc")));
   return snapshot.docs.map((document) => document.data());
 }
 

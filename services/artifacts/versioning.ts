@@ -1,20 +1,20 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
 
 import {
-  COLLECTIONS,
+  USER_COLLECTIONS,
   createArtifactDocId,
   formatVersionLabel,
   getDb,
   isFirebaseConfigured,
 } from "@/lib/firebase";
 
-export async function getNextArtifactVersion(jobId: string, collectionName: typeof COLLECTIONS.tailoredResumes | typeof COLLECTIONS.coverLetters) {
+export async function getNextArtifactVersion(uid: string, jobId: string, collectionName: typeof USER_COLLECTIONS.tailoredResumes | typeof USER_COLLECTIONS.coverLetters) {
   if (!isFirebaseConfigured()) {
     return 1;
   }
 
   const snapshot = await getDocs(
-    query(collection(getDb(), collectionName), where("jobId", "==", jobId)),
+    query(collection(getDb(), `users/${uid}/${collectionName}`), where("jobId", "==", jobId)),
   );
 
   if (snapshot.empty) {

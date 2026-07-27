@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getAuth } from "@/lib/firebase";
 import { updateApplicationStatus, updateApplicationNotes } from "@/services/apply/tracker";
 import { ApplicationStatus } from "@/types/application";
 
@@ -17,16 +18,23 @@ const notesSchema = z.object({
 
 export async function PATCH(request: Request) {
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
 
     if ("notes" in body) {
       const { jobId, notes } = notesSchema.parse(body);
-      const application = await updateApplicationNotes(jobId, notes);
+      const application = await updateApplicationNotes(user.uid, jobId, notes);
       return NextResponse.json({ success: true, application });
     }
 
     const { jobId, status, note } = statusSchema.parse(body);
-    const application = await updateApplicationStatus(jobId, status, note);
+    const application = await updateApplicationStatus(user.uid, jobId, status, note);
     return NextResponse.json({ success: true, application });
   } catch (error) {
     if (error instanceof z.ZodError) {

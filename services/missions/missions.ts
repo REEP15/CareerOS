@@ -1,32 +1,32 @@
 import { doc, getDoc, setDoc, deleteDoc, getDocs, query, orderBy } from "firebase/firestore";
 
-import { getMissionsCollection, getDb, isFirebaseConfigured } from "@/lib/firebase";
+import { getUserMissionsCollection, getDb, isFirebaseConfigured } from "@/lib/firebase";
 import type { Mission, MissionInput } from "@/types/mission";
 
-export async function getMissions(): Promise<Mission[]> {
+export async function getMissions(uid: string): Promise<Mission[]> {
   if (!isFirebaseConfigured()) {
     return [];
   }
 
-  const snapshot = await getDocs(query(getMissionsCollection(), orderBy("updatedAt", "desc")));
+  const snapshot = await getDocs(query(getUserMissionsCollection(uid), orderBy("updatedAt", "desc")));
   return snapshot.docs.map((document) => document.data());
 }
 
-export async function getActiveMissions(): Promise<Mission[]> {
-  const missions = await getMissions();
+export async function getActiveMissions(uid: string): Promise<Mission[]> {
+  const missions = await getMissions(uid);
   return missions.filter((mission) => mission.active);
 }
 
-export async function getMission(id: string): Promise<Mission | null> {
+export async function getMission(uid: string, id: string): Promise<Mission | null> {
   if (!isFirebaseConfigured()) {
     return null;
   }
 
-  const snapshot = await getDoc(doc(getDb(), "missions", id));
+  const snapshot = await getDoc(doc(getUserMissionsCollection(uid), id));
   return snapshot.exists() ? (snapshot.data() as Mission) : null;
 }
 
-export async function createMission(input: MissionInput): Promise<Mission> {
+export async function createMission(uid: string, input: MissionInput): Promise<Mission> {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase environment variables are missing.");
   }
@@ -40,16 +40,16 @@ export async function createMission(input: MissionInput): Promise<Mission> {
     updatedAt: now,
   };
 
-  await setDoc(doc(getDb(), "missions", id), mission);
+  await setDoc(doc(getUserMissionsCollection(uid), id), mission);
   return mission;
 }
 
-export async function updateMission(id: string, input: Partial<MissionInput>): Promise<Mission> {
+export async function updateMission(uid: string, id: string, input: Partial<MissionInput>): Promise<Mission> {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase environment variables are missing.");
   }
 
-  const existing = await getMission(id);
+  const existing = await getMission(uid, id);
 
   if (!existing) {
     throw new Error("Mission not found.");
@@ -62,26 +62,26 @@ export async function updateMission(id: string, input: Partial<MissionInput>): P
     updatedAt: new Date().toISOString(),
   };
 
-  await setDoc(doc(getDb(), "missions", id), mission);
+  await setDoc(doc(getUserMissionsCollection(uid), id), mission);
   return mission;
 }
 
-export async function deleteMission(id: string) {
+export async function deleteMission(uid: string, id: string) {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase environment variables are missing.");
   }
 
-  await deleteDoc(doc(getDb(), "missions", id));
+  await deleteDoc(doc(getUserMissionsCollection(uid), id));
 }
 
-export async function duplicateMission(id: string): Promise<Mission> {
-  const existing = await getMission(id);
+export async function duplicateMission(uid: string, id: string): Promise<Mission> {
+  const existing = await getMission(uid, id);
 
   if (!existing) {
     throw new Error("Mission not found.");
   }
 
-  return createMission({
+  return createMission(uid, {
     name: `${existing.name} (Copy)`,
     keywords: [...existing.keywords],
     excludedKeywords: [...existing.excludedKeywords],
@@ -94,8 +94,8 @@ export async function duplicateMission(id: string): Promise<Mission> {
   });
 }
 
-export async function setMissionActive(id: string, active: boolean) {
-  return updateMission(id, { active });
+export async function setMissionActive(uid: string, id: string, active: boolean) {
+  return updateMission(uid, id, { active });
 }
 
 export function jobMatchesMission(

@@ -22,8 +22,8 @@ export type SchedulerResult = {
   dashboard?: ReturnType<typeof getDashboardMetrics> extends Promise<infer T> ? T : never;
 };
 
-export async function runCollectors() {
-  const activeMissions = await getActiveMissions();
+export async function runCollectors(uid: string) {
+  const activeMissions = await getActiveMissions(uid);
   const collectedGroups = await Promise.all(collectors.map((collector) => collector.collect()));
   let mergedJobs = collectedGroups.flat();
 
@@ -50,9 +50,9 @@ export async function runCollectors() {
   }
 
   const { jobs: uniqueJobs } = dedupeJobs(mergedJobs);
-  const result = await saveCollectedJobs(uniqueJobs);
+  const result = await saveCollectedJobs(uid, uniqueJobs);
 
-  await createNotification({
+  await createNotification(uid, {
     type: NotificationType.COLLECTION_FINISHED,
     title: "Job Collection Complete",
     message: `Collected ${mergedJobs.length} jobs. Added ${result.added} new jobs.`,
@@ -60,7 +60,7 @@ export async function runCollectors() {
   });
 
   if (activeMissions.length > 0) {
-    await createNotification({
+    await createNotification(uid, {
       type: NotificationType.MISSION_FINISHED,
       title: "Mission Collection Complete",
       message: `Filtered collection using ${activeMissions.length} active mission(s).`,
@@ -75,16 +75,16 @@ export async function runCollectors() {
   };
 }
 
-export async function runMatcher() {
-  const resume = await loadPrimaryResumeProfile();
+export async function runMatcher(uid: string) {
+  const resume = await loadPrimaryResumeProfile(uid);
 
   if (!resume) {
     throw new Error("No ResumeProfile found. Upload a resume before matching.");
   }
 
-  const jobs = await loadStoredJobs();
+  const jobs = await loadStoredJobs(uid);
   const results = await Promise.all(jobs.map((job) => matchJob(resume, job)));
-  await saveMatchResults(results);
+  await saveMatchResults(uid, results);
 
   const recommended = results.filter((result) => result.recommended).length;
   const averageScore =
@@ -95,7 +95,7 @@ export async function runMatcher() {
     const job = jobs.find((j) => j.id === match.jobId);
 
     if (job) {
-      await createNotification({
+      await createNotification(uid, {
         type: NotificationType.NEW_HIGH_MATCH,
         title: `High Match: ${job.title}`,
         message: `${match.overallScore}% match at ${job.company}`,
@@ -117,9 +117,9 @@ export async function refreshDashboard() {
   return getDashboardMetrics();
 }
 
-export async function runFullPipeline(): Promise<SchedulerResult> {
-  const collectors = await runCollectors();
-  const matcher = await runMatcher();
+export async function runFullPipeline(uid: string): Promise<SchedulerResult> {
+  const collectors = await runCollectors(uid);
+  const matcher = await runMatcher(uid);
   const dashboard = await refreshDashboard();
 
   return { collectors, matcher, dashboard };

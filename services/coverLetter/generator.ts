@@ -1,7 +1,7 @@
 import { collection, doc, getDocs, orderBy, query, setDoc, where } from "firebase/firestore";
 
 import { getCoverLetterProvider } from "@/lib/ai";
-import { COLLECTIONS, getDb, isFirebaseConfigured } from "@/lib/firebase";
+import { USER_COLLECTIONS, getDb, isFirebaseConfigured } from "@/lib/firebase";
 import {
   buildArtifactId,
   buildVersionLabel,
@@ -17,25 +17,25 @@ import type { JobPosting } from "@/types/job";
 import type { MatchResult } from "@/types/match";
 import type { ResumeProfile } from "@/types/resume";
 
-export async function generateCoverLetter(job: JobPosting, match: MatchResult | null) {
-  const resume = await loadPrimaryResumeProfile();
+export async function generateCoverLetter(uid: string, job: JobPosting, match: MatchResult | null) {
+  const resume = await loadPrimaryResumeProfile(uid);
 
   if (!resume) {
     throw new Error("No ResumeProfile found. Upload a resume before generating a cover letter.");
   }
 
-  const generated = await createCoverLetter(resume, job, match);
-  await setDoc(doc(getDb(), COLLECTIONS.coverLetters, generated.id), generated);
+  const generated = await createCoverLetter(uid, resume, job, match);
+  await setDoc(doc(getDb(), `users/${uid}/${USER_COLLECTIONS.coverLetters}`, generated.id), generated);
 
   return generated;
 }
 
-export async function getCoverLetter(jobId: string, versionLabel?: string): Promise<CoverLetter | null> {
+export async function getCoverLetter(uid: string, jobId: string, versionLabel?: string): Promise<CoverLetter | null> {
   if (!isFirebaseConfigured()) {
     return null;
   }
 
-  const versions = await getCoverLetterVersions(jobId);
+  const versions = await getCoverLetterVersions(uid, jobId);
 
   if (versionLabel) {
     return versions.find((letter) => letter.versionLabel === versionLabel) ?? null;
@@ -44,23 +44,23 @@ export async function getCoverLetter(jobId: string, versionLabel?: string): Prom
   return versions[0] ?? null;
 }
 
-export async function getCoverLetterVersions(jobId: string): Promise<CoverLetter[]> {
+export async function getCoverLetterVersions(uid: string, jobId: string): Promise<CoverLetter[]> {
   if (!isFirebaseConfigured()) {
     return [];
   }
 
   const snapshot = await getDocs(
-    query(collection(getDb(), COLLECTIONS.coverLetters), where("jobId", "==", jobId), orderBy("version", "desc")),
+    query(collection(getDb(), `users/${uid}/${USER_COLLECTIONS.coverLetters}`), where("jobId", "==", jobId), orderBy("version", "desc")),
   );
   return snapshot.docs.map((document) => document.data() as CoverLetter);
 }
 
-export async function getCoverLetters(): Promise<CoverLetter[]> {
+export async function getCoverLetters(uid: string): Promise<CoverLetter[]> {
   if (!isFirebaseConfigured()) {
     return [];
   }
 
-  const snapshot = await getDocs(collection(getDb(), COLLECTIONS.coverLetters));
+  const snapshot = await getDocs(collection(getDb(), `users/${uid}/${USER_COLLECTIONS.coverLetters}`));
   const byJobId = new Map<string, CoverLetter>();
 
   for (const document of snapshot.docs) {
@@ -75,8 +75,8 @@ export async function getCoverLetters(): Promise<CoverLetter[]> {
   return [...byJobId.values()];
 }
 
-async function createCoverLetter(resume: ResumeProfile, job: JobPosting, match: MatchResult | null) {
-  const version = await getNextArtifactVersion(job.id, COLLECTIONS.coverLetters);
+async function createCoverLetter(uid: string, resume: ResumeProfile, job: JobPosting, match: MatchResult | null) {
+  const version = await getNextArtifactVersion(uid, job.id, USER_COLLECTIONS.coverLetters);
   const versionLabel = buildVersionLabel(version);
   const provider = getCoverLetterProvider();
   const prompt = createCoverLetterPrompt(resume, job, match);

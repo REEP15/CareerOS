@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getAuth } from "@/lib/firebase";
 import { hasApiKey, saveApiKey } from "@/services/api-keys/api-keys";
 
 const saveSchema = z.object({
@@ -10,6 +11,13 @@ const saveSchema = z.object({
 
 export async function GET(request: Request) {
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const provider = searchParams.get("provider") as "chatgpt" | "gemini" | "deepseek" | null;
 
@@ -17,7 +25,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: "Provider is required." }, { status: 400 });
     }
 
-    const hasKey = await hasApiKey(provider);
+    const hasKey = await hasApiKey(user.uid, provider);
     return NextResponse.json({ success: true, hasKey });
   } catch (error) {
     return NextResponse.json(
@@ -32,8 +40,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const input = saveSchema.parse(await request.json());
-    await saveApiKey(input.provider, input.apiKey);
+    await saveApiKey(user.uid, input.provider, input.apiKey);
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {

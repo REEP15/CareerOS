@@ -1,6 +1,6 @@
 import { doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 
-import { COLLECTIONS, getApplicationsCollection, getDb, isFirebaseConfigured } from "@/lib/firebase";
+import { getUserApplicationsCollection, getUserJobsCollection, getUserMatchesCollection, getDb, isFirebaseConfigured } from "@/lib/firebase";
 import { ApplicationStatus, type Application, type ApplicationTimelineEvent } from "@/types/application";
 import type { CoverLetter } from "@/types/coverLetter";
 import type { JobPosting } from "@/types/job";
@@ -25,21 +25,21 @@ export type ApplicationResult = {
   unknownFields?: string[];
 };
 
-export async function getApplication(jobId: string): Promise<Application | null> {
+export async function getApplication(uid: string, jobId: string): Promise<Application | null> {
   if (!isFirebaseConfigured()) {
     return null;
   }
 
-  const snapshot = await getDoc(doc(getDb(), COLLECTIONS.applications, jobId));
+  const snapshot = await getDoc(doc(getUserApplicationsCollection(uid), jobId));
   return snapshot.exists() ? normalizeApplication(snapshot.data() as Application) : null;
 }
 
-export async function getStoredApplications() {
+export async function getStoredApplications(uid: string) {
   if (!isFirebaseConfigured()) {
     return [];
   }
 
-  const snapshot = await getDocs(getApplicationsCollection());
+  const snapshot = await getDocs(getUserApplicationsCollection(uid));
   return snapshot.docs.map((document) => normalizeApplication(document.data()));
 }
 
@@ -66,7 +66,7 @@ function appendTimelineEvent(
   ];
 }
 
-export async function upsertApplication(input: {
+export async function upsertApplication(uid: string, input: {
   coverLetterVersion?: string;
   jobId: string;
   notes?: string;
@@ -78,7 +78,7 @@ export async function upsertApplication(input: {
     throw new Error("Firebase environment variables are missing.");
   }
 
-  const existing = await getApplication(input.jobId);
+  const existing = await getApplication(uid, input.jobId);
   const statusChanged = existing?.status !== input.status;
   const application: Application = {
     id: input.jobId,
@@ -94,42 +94,42 @@ export async function upsertApplication(input: {
       : existing?.timeline ?? [],
   };
 
-  await setDoc(doc(getDb(), COLLECTIONS.applications, input.jobId), application);
+  await setDoc(doc(getUserApplicationsCollection(uid), input.jobId), application);
 
   return application;
 }
 
-export async function updateApplicationStatus(jobId: string, status: ApplicationStatus, note?: string) {
-  return upsertApplication({ jobId, status, timelineNote: note });
+export async function updateApplicationStatus(uid: string, jobId: string, status: ApplicationStatus, note?: string) {
+  return upsertApplication(uid, { jobId, status, timelineNote: note });
 }
 
-export async function updateApplicationNotes(jobId: string, notes: string) {
-  const existing = await getApplication(jobId);
+export async function updateApplicationNotes(uid: string, jobId: string, notes: string) {
+  const existing = await getApplication(uid, jobId);
 
   if (!existing) {
-    return upsertApplication({
+    return upsertApplication(uid, {
       jobId,
       status: ApplicationStatus.NOT_APPLIED,
       notes,
     });
   }
 
-  return upsertApplication({
+  return upsertApplication(uid, {
     jobId,
     status: existing.status,
     notes,
   });
 }
 
-export async function loadApplicationPackage(jobId: string): Promise<ApplicationPackage> {
+export async function loadApplicationPackage(uid: string, jobId: string): Promise<ApplicationPackage> {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase environment variables are missing.");
   }
 
-  const application = await getApplication(jobId);
+  const application = await getApplication(uid, jobId);
   const [jobSnapshot, matchSnapshot] = await Promise.all([
-    getDoc(doc(getDb(), COLLECTIONS.jobs, jobId)),
-    getDoc(doc(getDb(), COLLECTIONS.matches, jobId)),
+    getDoc(doc(getUserJobsCollection(uid), jobId)),
+    getDoc(doc(getUserMatchesCollection(uid), jobId)),
   ]);
 
   if (!jobSnapshot.exists()) {
@@ -140,8 +140,8 @@ export async function loadApplicationPackage(jobId: string): Promise<Application
   const coverLetterVersion = application?.coverLetterVersion;
 
   const [tailoredResume, coverLetter] = await Promise.all([
-    getTailoredResume(jobId, resumeVersion),
-    getCoverLetter(jobId, coverLetterVersion),
+    getTailoredResume(uid, jobId, resumeVersion),
+    getCoverLetter(uid, jobId, coverLetterVersion),
   ]);
 
   return {

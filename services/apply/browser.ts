@@ -5,12 +5,12 @@ import { ApplicationStatus } from "@/types/application";
 import { createNotification } from "@/services/notifications/notifications";
 import { NotificationType } from "@/types/notification";
 
-export async function startApplication(jobId: string): Promise<ApplicationResult> {
+export async function startApplication(uid: string, jobId: string): Promise<ApplicationResult> {
   logApply("info", "Starting application", { jobId });
 
-  const applicationPackage = await loadApplicationPackage(jobId);
+  const applicationPackage = await loadApplicationPackage(uid, jobId);
 
-  await upsertApplication({
+  await upsertApplication(uid, {
     jobId,
     status: ApplicationStatus.APPLYING,
     resumeVersion: applicationPackage.application.resumeVersion ?? applicationPackage.tailoredResume?.versionLabel,
@@ -21,7 +21,7 @@ export async function startApplication(jobId: string): Promise<ApplicationResult
   try {
     const result = await launchApplicationBrowser(applicationPackage);
 
-    await upsertApplication({
+    await upsertApplication(uid, {
       jobId,
       status: ApplicationStatus.REVIEW_REQUIRED,
       timelineNote: result.reviewPageReached
@@ -29,7 +29,7 @@ export async function startApplication(jobId: string): Promise<ApplicationResult
         : "Form filled — manual review required",
     });
 
-    await createNotification({
+    await createNotification(uid, {
       type: NotificationType.APPLICATION_COMPLETE,
       title: "Application Ready for Review",
       message: `Application for ${applicationPackage.job.title} at ${applicationPackage.job.company} is ready for manual review.`,
@@ -44,7 +44,7 @@ export async function startApplication(jobId: string): Promise<ApplicationResult
       unknownFields: result.unknownFields,
     };
   } catch (error) {
-    await upsertApplication({
+    await upsertApplication(uid, {
       jobId,
       status: ApplicationStatus.READY,
       timelineNote: `Apply session failed: ${error instanceof Error ? error.message : "Unknown error"}`,

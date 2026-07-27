@@ -1,7 +1,7 @@
 import { collection, doc, getDocs, orderBy, query, setDoc, where } from "firebase/firestore";
 
 import { getResumeTailoringProvider } from "@/lib/ai";
-import { COLLECTIONS, getDb, isFirebaseConfigured } from "@/lib/firebase";
+import { USER_COLLECTIONS, getDb, isFirebaseConfigured } from "@/lib/firebase";
 import {
   buildArtifactId,
   buildVersionLabel,
@@ -17,50 +17,50 @@ import type { MatchResult } from "@/types/match";
 import type { ResumeProfile } from "@/types/resume";
 import type { ResumeDiff, TailoredResume } from "@/types/tailoredResume";
 
-export async function generateTailoredResume(job: JobPosting, match: MatchResult | null) {
-  const resume = await loadPrimaryResumeProfile();
+export async function generateTailoredResume(uid: string, job: JobPosting, match: MatchResult | null) {
+  const resume = await loadPrimaryResumeProfile(uid);
 
   if (!resume) {
     throw new Error("No ResumeProfile found. Upload a resume before tailoring.");
   }
 
-  const generated = await createTailoredResume(resume, job, match);
-  await setDoc(doc(getDb(), COLLECTIONS.tailoredResumes, generated.id), generated);
+  const generated = await createTailoredResume(uid, resume, job, match);
+  await setDoc(doc(getDb(), `users/${uid}/${USER_COLLECTIONS.tailoredResumes}`, generated.id), generated);
 
   return generated;
 }
 
-export async function getTailoredResume(jobId: string, versionLabel?: string): Promise<TailoredResume | null> {
+export async function getTailoredResume(uid: string, jobId: string, versionLabel?: string): Promise<TailoredResume | null> {
   if (!isFirebaseConfigured()) {
     return null;
   }
 
   if (versionLabel) {
-    const versions = await getTailoredResumeVersions(jobId);
+    const versions = await getTailoredResumeVersions(uid, jobId);
     return versions.find((resume) => resume.versionLabel === versionLabel) ?? null;
   }
 
-  const versions = await getTailoredResumeVersions(jobId);
+  const versions = await getTailoredResumeVersions(uid, jobId);
   return versions[0] ?? null;
 }
 
-export async function getTailoredResumeVersions(jobId: string): Promise<TailoredResume[]> {
+export async function getTailoredResumeVersions(uid: string, jobId: string): Promise<TailoredResume[]> {
   if (!isFirebaseConfigured()) {
     return [];
   }
 
   const snapshot = await getDocs(
-    query(collection(getDb(), COLLECTIONS.tailoredResumes), where("jobId", "==", jobId), orderBy("version", "desc")),
+    query(collection(getDb(), `users/${uid}/${USER_COLLECTIONS.tailoredResumes}`), where("jobId", "==", jobId), orderBy("version", "desc")),
   );
   return snapshot.docs.map((document) => document.data() as TailoredResume);
 }
 
-export async function getTailoredResumes(): Promise<TailoredResume[]> {
+export async function getTailoredResumes(uid: string): Promise<TailoredResume[]> {
   if (!isFirebaseConfigured()) {
     return [];
   }
 
-  const snapshot = await getDocs(collection(getDb(), COLLECTIONS.tailoredResumes));
+  const snapshot = await getDocs(collection(getDb(), `users/${uid}/${USER_COLLECTIONS.tailoredResumes}`));
   const byJobId = new Map<string, TailoredResume>();
 
   for (const document of snapshot.docs) {
@@ -75,8 +75,8 @@ export async function getTailoredResumes(): Promise<TailoredResume[]> {
   return [...byJobId.values()];
 }
 
-async function createTailoredResume(resume: ResumeProfile, job: JobPosting, match: MatchResult | null) {
-  const version = await getNextArtifactVersion(job.id, COLLECTIONS.tailoredResumes);
+async function createTailoredResume(uid: string, resume: ResumeProfile, job: JobPosting, match: MatchResult | null) {
+  const version = await getNextArtifactVersion(uid, job.id, USER_COLLECTIONS.tailoredResumes);
   const versionLabel = buildVersionLabel(version);
   const provider = getResumeTailoringProvider();
   const prompt = createResumeTailoringPrompt(resume, job, match);

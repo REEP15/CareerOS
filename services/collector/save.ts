@@ -1,15 +1,15 @@
 import { doc, getDocs, orderBy, query, setDoc } from "firebase/firestore";
 
-import { COLLECTIONS, getJobsCollection, isFirebaseConfigured, getDb } from "@/lib/firebase";
+import { getUserJobsCollection, isFirebaseConfigured, getDb } from "@/lib/firebase";
 import { createJobDuplicateKey } from "@/services/collector/normalize";
 import type { JobPosting } from "@/types/job";
 
-export async function saveCollectedJobs(jobs: JobPosting[]) {
+export async function saveCollectedJobs(uid: string, jobs: JobPosting[]) {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase environment variables are missing.");
   }
 
-  const existingJobs = await getStoredJobs();
+  const existingJobs = await getStoredJobs(uid);
   const seen = new Set(existingJobs.map((job) => createJobDuplicateKey(job)));
   let added = 0;
   let skipped = 0;
@@ -23,18 +23,18 @@ export async function saveCollectedJobs(jobs: JobPosting[]) {
     }
 
     seen.add(duplicateKey);
-    await setDoc(doc(getDb(), COLLECTIONS.jobs, job.id), job);
+    await setDoc(doc(getUserJobsCollection(uid), job.id), job);
     added += 1;
   }
 
   return { added, skipped };
 }
 
-export async function getStoredJobs(): Promise<JobPosting[]> {
+export async function getStoredJobs(uid: string): Promise<JobPosting[]> {
   if (!isFirebaseConfigured()) {
     return [];
   }
 
-  const snapshot = await getDocs(query(getJobsCollection(), orderBy("scrapedAt", "desc")));
+  const snapshot = await getDocs(query(getUserJobsCollection(uid), orderBy("scrapedAt", "desc")));
   return snapshot.docs.map((document) => document.data());
 }

@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getAuth } from "@/lib/firebase";
 import { getSettings, saveSettings } from "@/services/settings/settings";
 
 export async function GET() {
   try {
-    const settings = await getSettings();
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const settings = await getSettings(user.uid);
     return NextResponse.json({ success: true, settings });
   } catch (error) {
     return NextResponse.json(
@@ -29,8 +37,15 @@ const settingsSchema = z.object({
 
 export async function PUT(request: Request) {
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const input = settingsSchema.parse(await request.json());
-    const settings = await saveSettings(input);
+    const settings = await saveSettings(user.uid, input);
     return NextResponse.json({ success: true, settings });
   } catch (error) {
     if (error instanceof z.ZodError) {

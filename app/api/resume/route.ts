@@ -3,7 +3,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { z } from "zod";
 
-import { getDb, getFileStorage, isFirebaseConfigured } from "@/lib/firebase";
+import { getAuth, getDb, getFileStorage, isFirebaseConfigured } from "@/lib/firebase";
 import { parseResume } from "@/services/resume/parser";
 
 const fileSchema = z
@@ -13,6 +13,13 @@ const fileSchema = z
 
 export async function POST(request: Request) {
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = fileSchema.parse(formData.get("file"));
     const profile = await parseResume(file);
@@ -28,7 +35,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const storagePath = `resume/${profile.id}/${Date.now()}-${sanitizeFileName(file.name)}`;
+    const storagePath = `resume/${user.uid}/${profile.id}/${Date.now()}-${sanitizeFileName(file.name)}`;
     const storageReference = ref(getFileStorage(), storagePath);
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     await uploadBytes(storageReference, fileBuffer, {
@@ -36,7 +43,7 @@ export async function POST(request: Request) {
     });
 
     const downloadUrl = await getDownloadURL(storageReference);
-    await setDoc(doc(getDb(), "resume", profile.id), {
+    await setDoc(doc(getDb(), `users/${user.uid}/resume`, profile.id), {
       ...profile,
       sourceFileName: file.name,
       resumeUrl: downloadUrl,

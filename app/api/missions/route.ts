@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getAuth } from "@/lib/firebase";
 import {
   createMission,
   deleteMission,
@@ -25,7 +26,14 @@ const missionInputSchema = z.object({
 
 export async function GET() {
   try {
-    const missions = await getMissions();
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const missions = await getMissions(user.uid);
     return NextResponse.json({ success: true, missions });
   } catch (error) {
     return NextResponse.json(
@@ -40,8 +48,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const input = missionInputSchema.parse(await request.json());
-    const mission = await createMission(input);
+    const mission = await createMission(user.uid, input);
     return NextResponse.json({ success: true, mission });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -66,30 +81,37 @@ const patchSchema = z.object({
 
 export async function PATCH(request: Request) {
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = patchSchema.parse(await request.json());
 
     if (body.action === "delete") {
-      await deleteMission(body.id);
+      await deleteMission(user.uid, body.id);
       return NextResponse.json({ success: true });
     }
 
     if (body.action === "duplicate") {
-      const mission = await duplicateMission(body.id);
+      const mission = await duplicateMission(user.uid, body.id);
       return NextResponse.json({ success: true, mission });
     }
 
     if (body.action === "enable") {
-      const mission = await setMissionActive(body.id, true);
+      const mission = await setMissionActive(user.uid, body.id, true);
       return NextResponse.json({ success: true, mission });
     }
 
     if (body.action === "disable") {
-      const mission = await setMissionActive(body.id, false);
+      const mission = await setMissionActive(user.uid, body.id, false);
       return NextResponse.json({ success: true, mission });
     }
 
     if (body.data) {
-      const mission = await updateMission(body.id, body.data);
+      const mission = await updateMission(user.uid, body.id, body.data);
       return NextResponse.json({ success: true, mission });
     }
 
@@ -106,6 +128,13 @@ export async function PATCH(request: Request) {
 }
 
 export async function GET_BY_ID(id: string) {
-  const mission = await getMission(id);
+  const auth = getAuth();
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+
+  const mission = await getMission(user.uid, id);
   return mission;
 }

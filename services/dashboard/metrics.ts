@@ -38,8 +38,7 @@ export type DashboardMetrics = {
   }>;
 };
 
-let cachedMetrics: DashboardMetrics | null = null;
-let cacheTimestamp = 0;
+let cachedMetrics: Map<string, { metrics: DashboardMetrics; timestamp: number }> = new Map();
 const CACHE_TTL_MS = 30_000;
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -54,23 +53,27 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
   [ApplicationStatus.OFFER]: "Offer",
 };
 
-export function invalidateDashboardCache() {
-  cachedMetrics = null;
-  cacheTimestamp = 0;
+export function invalidateDashboardCache(uid?: string) {
+  if (uid) {
+    cachedMetrics.delete(uid);
+  } else {
+    cachedMetrics.clear();
+  }
 }
 
-export async function getDashboardMetrics(): Promise<DashboardMetrics> {
+export async function getDashboardMetrics(uid: string): Promise<DashboardMetrics> {
   const now = Date.now();
+  const cached = cachedMetrics.get(uid);
 
-  if (cachedMetrics && now - cacheTimestamp < CACHE_TTL_MS) {
-    return cachedMetrics;
+  if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+    return cached.metrics;
   }
 
   const [jobs, matches, applications, missions] = await Promise.all([
-    getStoredJobs(),
-    getStoredMatches(),
-    getStoredApplications(),
-    getMissions(),
+    getStoredJobs(uid),
+    getStoredMatches(uid),
+    getStoredApplications(uid),
+    getMissions(uid),
   ]);
 
   const recommended = matches.filter((match) => match.recommended).length;
@@ -157,7 +160,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     label: STATUS_LABELS[status],
   }));
 
-  cachedMetrics = {
+  const metrics = {
     jobsCollected: jobs.length,
     recommended,
     applied,
@@ -175,9 +178,10 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     pipeline,
     recommendedJobs,
   };
-  cacheTimestamp = now;
 
-  return cachedMetrics;
+  cachedMetrics.set(uid, { metrics, timestamp: now });
+
+  return metrics;
 }
 
 function buildDailyCounts(dates: string[], days: number) {

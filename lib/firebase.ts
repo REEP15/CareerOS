@@ -36,6 +36,20 @@ export const COLLECTIONS = {
   apiKeys: "apiKeys",
 } as const;
 
+export const USER_COLLECTIONS = {
+  profile: "profile",
+  settings: "settings",
+  apiKeys: "apiKeys",
+  resume: "resume",
+  jobs: "jobs",
+  missions: "missions",
+  applications: "applications",
+  coverLetters: "coverLetters",
+  matches: "matches",
+  tailoredResumes: "tailoredResumes",
+  notifications: "notifications",
+} as const;
+
 export function isFirebaseConfigured() {
   return Boolean(
     firebaseConfig.apiKey &&
@@ -132,6 +146,51 @@ export function getCoverLettersCollection(): CollectionReference<CoverLetter> {
 
 export function getApiKeysCollection(): CollectionReference<ApiKeyStorage> {
   return collection(getDb(), COLLECTIONS.apiKeys) as CollectionReference<ApiKeyStorage>;
+}
+
+// User-scoped collection helpers
+export function getUserCollection(uid: string, collectionName: string) {
+  return collection(getDb(), `users/${uid}/${collectionName}`);
+}
+
+export function getUserResumeCollection(uid: string): CollectionReference<ResumeProfile> {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.resume}`) as CollectionReference<ResumeProfile>;
+}
+
+export function getUserJobsCollection(uid: string): CollectionReference<JobPosting> {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.jobs}`) as CollectionReference<JobPosting>;
+}
+
+export function getUserApplicationsCollection(uid: string): CollectionReference<Application> {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.applications}`) as CollectionReference<Application>;
+}
+
+export function getUserMatchesCollection(uid: string): CollectionReference<MatchResult> {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.matches}`) as CollectionReference<MatchResult>;
+}
+
+export function getUserMissionsCollection(uid: string): CollectionReference<Mission> {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.missions}`) as CollectionReference<Mission>;
+}
+
+export function getUserSettingsCollection(uid: string): CollectionReference<AppSettings> {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.settings}`) as CollectionReference<AppSettings>;
+}
+
+export function getUserNotificationsCollection(uid: string): CollectionReference<Notification> {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.notifications}`) as CollectionReference<Notification>;
+}
+
+export function getUserTailoredResumesCollection(uid: string): CollectionReference<TailoredResume> {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.tailoredResumes}`) as CollectionReference<TailoredResume>;
+}
+
+export function getUserCoverLettersCollection(uid: string): CollectionReference<CoverLetter> {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.coverLetters}`) as CollectionReference<CoverLetter>;
+}
+
+export function getUserApiKeysCollection(uid: string): CollectionReference<ApiKeyStorage> {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.apiKeys}`) as CollectionReference<ApiKeyStorage>;
 }
 
 export function createArtifactDocId(jobId: string, version: number) {

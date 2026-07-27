@@ -14,7 +14,7 @@ export type SearchResult = {
   score: number;
 };
 
-export async function globalSearch(query: string, limit = 20): Promise<SearchResult[]> {
+export async function globalSearch(uid: string, query: string, limit = 20): Promise<SearchResult[]> {
   const normalizedQuery = query.trim().toLowerCase();
 
   if (!normalizedQuery || normalizedQuery.length < 2) {
@@ -22,10 +22,10 @@ export async function globalSearch(query: string, limit = 20): Promise<SearchRes
   }
 
   const [jobs, matches, missions, resume] = await Promise.all([
-    getStoredJobs(),
-    getStoredMatches(),
-    getMissions(),
-    loadPrimaryResumeProfile(),
+    getStoredJobs(uid),
+    getStoredMatches(uid),
+    getMissions(uid),
+    loadPrimaryResumeProfile(uid),
   ]);
 
   const results: SearchResult[] = [];

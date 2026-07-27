@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getAuth } from "@/lib/firebase";
 import { globalSearch } from "@/services/search/search";
 
 const querySchema = z.object({
@@ -10,13 +11,20 @@ const querySchema = z.object({
 
 export async function GET(request: Request) {
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const { q, limit } = querySchema.parse({
       q: searchParams.get("q") ?? "",
       limit: searchParams.get("limit") ?? undefined,
     });
 
-    const results = await globalSearch(q, limit ?? 20);
+    const results = await globalSearch(user.uid, q, limit ?? 20);
 
     return NextResponse.json({ success: true, results });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getAuth } from "@/lib/firebase";
 import { startApplication } from "@/services/apply/browser";
 
 const requestSchema = z.object({
@@ -9,8 +10,15 @@ const requestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const { jobId } = requestSchema.parse(await request.json());
-    const result = await startApplication(jobId);
+    const result = await startApplication(user.uid, jobId);
 
     return NextResponse.json({
       success: true,

@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useTheme } from "@/components/theme-provider";
+import { useAuth } from "@/components/auth-provider";
 import type { AppSettings } from "@/types/settings";
 
 type SettingsResponse =
@@ -23,13 +26,23 @@ type ApiKeyValidateResponse =
   | { success: true; valid: true }
   | { success: false; error: string };
 
+type DeleteAccountResponse =
+  | { success: true }
+  | { success: false; error: string };
+
 export function SettingsForm() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [apiKeyStored, setApiKeyStored] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isValidating, setIsValidating] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
   const { setTheme } = useTheme();
+  const { logout } = useAuth();
+  const router = useRouter();
 
   const checkApiKey = async (provider: AppSettings["aiProvider"]): Promise<boolean> => {
     if (provider === "none") {
@@ -165,6 +178,35 @@ export function SettingsForm() {
     setTheme(newTheme);
   };
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") {
+      toast.error("Please type DELETE to confirm.");
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+      });
+      const payload = (await response.json()) as DeleteAccountResponse;
+
+      if (!response.ok || !payload.success) {
+        toast.error(payload.success ? "Failed to delete account." : payload.error);
+        setIsDeleting(false);
+        return;
+      }
+
+      toast.success("Account deleted successfully.");
+      await logout();
+      router.push("/login");
+    } catch {
+      toast.error("An unexpected error occurred.");
+      setIsDeleting(false);
+    }
+  };
+
   if (!settings) {
     return <p className="text-sm text-muted-foreground">Loading settings...</p>;
   }
@@ -212,14 +254,26 @@ export function SettingsForm() {
             <div className="space-y-2">
               <Label htmlFor="apiKey">API Key</Label>
               <div className="flex gap-2">
-                <Input
-                  id="apiKey"
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  placeholder={apiKeyStored ? "API Key Stored" : "Enter your API key"}
-                  disabled={apiKeyStored}
-                />
+                <div className="relative flex-1">
+                  <Input
+                    id="apiKey"
+                    type={showApiKey ? "text" : "password"}
+                    value={apiKey}
+                    onChange={(event) => setApiKey(event.target.value)}
+                    placeholder={apiKeyStored ? "API Key Stored" : "Enter your API key"}
+                    disabled={apiKeyStored}
+                    className="pr-10"
+                  />
+                  {!apiKeyStored && (
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  )}
+                </div>
                 {!apiKeyStored && (
                   <Button onClick={handleSaveApiKey} disabled={isValidating || !apiKey.trim()}>
                     {isValidating ? "Validating..." : "Save"}
@@ -322,6 +376,57 @@ export function SettingsForm() {
       <Button onClick={handleSaveSettings} disabled={isPending}>
         {isPending ? "Saving..." : "Save Settings"}
       </Button>
+
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle className="text-destructive">Delete Account</CardTitle>
+          <CardDescription>Permanently delete your account and all associated data</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!showDeleteConfirm ? (
+            <Button
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              Delete Account
+            </Button>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This action cannot be undone. All your data including missions, jobs, applications, and settings will be permanently deleted.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="deleteConfirm">Type "DELETE" to confirm</Label>
+                <Input
+                  id="deleteConfirm"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting || deleteConfirmText !== "DELETE"}
+                >
+                  {isDeleting ? "Deleting..." : "Confirm Delete"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmText("");
+                  }}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

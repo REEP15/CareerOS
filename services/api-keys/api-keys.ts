@@ -1,16 +1,16 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
-import { getApiKeysCollection, getDb, isFirebaseConfigured } from "@/lib/firebase";
+import { getUserApiKeysCollection, getDb, isFirebaseConfigured } from "@/lib/firebase";
 import type { ApiKeyStorage, ApiKeyProvider } from "@/types/api-keys";
 
 const API_KEYS_DOC_ID = "user";
 
-export async function getApiKeys(): Promise<ApiKeyStorage> {
+export async function getApiKeys(uid: string): Promise<ApiKeyStorage> {
   if (!isFirebaseConfigured()) {
     return {};
   }
 
-  const snapshot = await getDoc(doc(getDb(), "apiKeys", API_KEYS_DOC_ID));
+  const snapshot = await getDoc(doc(getUserApiKeysCollection(uid), API_KEYS_DOC_ID));
 
   if (!snapshot.exists()) {
     return {};
@@ -19,26 +19,26 @@ export async function getApiKeys(): Promise<ApiKeyStorage> {
   return snapshot.data() as ApiKeyStorage;
 }
 
-export async function getApiKey(provider: ApiKeyProvider): Promise<string | undefined> {
-  const apiKeys = await getApiKeys();
+export async function getApiKey(uid: string, provider: ApiKeyProvider): Promise<string | undefined> {
+  const apiKeys = await getApiKeys(uid);
   return apiKeys[provider];
 }
 
-export async function saveApiKey(provider: ApiKeyProvider, apiKey: string): Promise<void> {
+export async function saveApiKey(uid: string, provider: ApiKeyProvider, apiKey: string): Promise<void> {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase environment variables are missing.");
   }
 
-  const existing = await getApiKeys();
+  const existing = await getApiKeys(uid);
   const updated: ApiKeyStorage = {
     ...existing,
     [provider]: apiKey,
   };
 
-  await setDoc(doc(getApiKeysCollection(), API_KEYS_DOC_ID), updated);
+  await setDoc(doc(getUserApiKeysCollection(uid), API_KEYS_DOC_ID), updated);
 }
 
-export async function hasApiKey(provider: ApiKeyProvider): Promise<boolean> {
-  const apiKey = await getApiKey(provider);
+export async function hasApiKey(uid: string, provider: ApiKeyProvider): Promise<boolean> {
+  const apiKey = await getApiKey(uid, provider);
   return Boolean(apiKey);
 }
