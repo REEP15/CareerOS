@@ -112,15 +112,15 @@ export async function runMatcher(uid: string) {
   };
 }
 
-export async function refreshDashboard() {
-  invalidateDashboardCache();
-  return getDashboardMetrics();
+export async function refreshDashboard(uid: string) {
+  invalidateDashboardCache(uid);
+  return getDashboardMetrics(uid);
 }
 
 export async function runFullPipeline(uid: string): Promise<SchedulerResult> {
   const collectors = await runCollectors(uid);
   const matcher = await runMatcher(uid);
-  const dashboard = await refreshDashboard();
+  const dashboard = await refreshDashboard(uid);
 
   return { collectors, matcher, dashboard };
 }

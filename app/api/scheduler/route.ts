@@ -29,14 +29,14 @@ export async function POST(request: Request) {
     }
 
     if (action === "dashboard") {
-      const result = await refreshDashboard();
+      const result = await refreshDashboard(user.uid);
       return NextResponse.json({ success: true, result });
     }
 
     const [collectors, matcher, dashboard] = await Promise.all([
       runCollectors(user.uid),
       runMatcher(user.uid),
-      refreshDashboard(),
+      refreshDashboard(user.uid),
     ]);
 
     return NextResponse.json({

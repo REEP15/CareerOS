@@ -1,12 +1,41 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
 import { MissionDetailPanel } from "@/components/mission-detail-panel";
 import { getMission } from "@/services/missions/missions";
+import { useAuth } from "@/components/auth-provider";
+import type { Mission } from "@/types/mission";
 
-export default async function MissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const mission = await getMission(id);
+export default function MissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { user, loading } = useAuth();
+  const [mission, setMission] = useState<Mission | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [id, setId] = useState<string>("");
+
+  useEffect(() => {
+    params.then(({ id: missionId }) => {
+      setId(missionId);
+    });
+  }, [params]);
+
+  useEffect(() => {
+    if (!loading && user && id) {
+      getMission(user.uid, id).then(setMission).finally(() => setIsLoading(false));
+    } else if (!loading && !user) {
+      setIsLoading(false);
+    }
+  }, [user, loading, id]);
+
+  if (loading || isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   if (!mission) {
     notFound();
