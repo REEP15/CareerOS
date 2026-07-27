@@ -5,6 +5,8 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/components/auth-provider";
+import { getAuth as getFirebaseAuth } from "@/lib/firebase";
 import type { ResumeProfile } from "@/types/resume";
 
 type ResumeUploadResponse = {
@@ -14,6 +16,7 @@ type ResumeUploadResponse = {
 };
 
 export function ResumeUploadCard() {
+  const { user } = useAuth();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [response, setResponse] = useState<ResumeUploadResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,15 +28,26 @@ export function ResumeUploadCard() {
       return;
     }
 
+    if (!user) {
+      setError("You must be logged in to upload a resume.");
+      return;
+    }
+
     startTransition(async () => {
       setError(null);
 
       try {
+        const auth = getFirebaseAuth();
+        const token = await user.getIdToken();
+
         const formData = new FormData();
         formData.append("file", selectedFile);
 
         const uploadResponse = await fetch("/api/resume", {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           body: formData,
         });
 
@@ -46,9 +60,10 @@ export function ResumeUploadCard() {
         }
 
         setResponse(payload);
-      } catch {
+      } catch (err) {
         setResponse(null);
         setError("An unexpected error occurred while uploading the resume.");
+        console.error(err);
       }
     });
   };

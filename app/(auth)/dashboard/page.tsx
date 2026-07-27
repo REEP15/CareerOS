@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const { user, loading } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user) {
@@ -19,7 +20,12 @@ export default function DashboardPage() {
         .then((payload) => {
           if (payload.success) {
             setMetrics(payload.metrics);
+          } else {
+            setError(payload.error || "Failed to load dashboard");
           }
+        })
+        .catch((err) => {
+          setError(err.message || "Failed to load dashboard");
         })
         .finally(() => setIsLoading(false));
     } else if (!loading && !user) {
@@ -27,10 +33,26 @@ export default function DashboardPage() {
     }
   }, [user, loading]);
 
-  if (loading || isLoading || !metrics) {
+  if (loading || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-destructive">Error: {error}</p>
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">No dashboard data available</p>
       </div>
     );
   }

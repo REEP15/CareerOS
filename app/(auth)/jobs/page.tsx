@@ -18,6 +18,7 @@ export default function JobsPage() {
   const { user, loading } = useAuth();
   const [jobsWithMatches, setJobsWithMatches] = useState<JobWithApplicationPackage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user) {
@@ -54,6 +55,8 @@ export default function JobsPage() {
           });
         
         setJobsWithMatches(jobsData);
+      }).catch((err) => {
+        setError(err.message || "Failed to load jobs");
       }).finally(() => setIsLoading(false));
     } else if (!loading && !user) {
       setIsLoading(false);
@@ -64,6 +67,14 @@ export default function JobsPage() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-destructive">Error: {error}</p>
       </div>
     );
   }
