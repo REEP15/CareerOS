@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useTheme } from "@/components/theme-provider";
 import { useAuth } from "@/components/auth-provider";
+import { authFetch } from "@/lib/auth-fetch";
 import type { AppSettings } from "@/types/settings";
 
 type SettingsResponse =
@@ -51,7 +52,7 @@ export function SettingsForm() {
     }
 
     try {
-      const response = await fetch(`/api/api-keys?provider=${provider}`);
+      const response = await authFetch(`/api/api-keys?provider=${provider}`);
       const payload = (await response.json()) as ApiKeyCheckResponse;
       if (payload.success) {
         setApiKeyStored(payload.hasKey);
@@ -64,7 +65,7 @@ export function SettingsForm() {
   };
 
   useEffect(() => {
-    void fetch("/api/settings")
+    void authFetch("/api/settings")
       .then((response) => response.json())
       .then((payload: SettingsResponse) => {
         if (payload.success) {
@@ -103,7 +104,7 @@ export function SettingsForm() {
     setIsValidating(true);
 
     try {
-      const validateResponse = await fetch("/api/api-keys/validate", {
+      const validateResponse = await authFetch("/api/api-keys/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider: settings.aiProvider, apiKey: apiKey.trim() }),
@@ -117,7 +118,7 @@ export function SettingsForm() {
         return;
       }
 
-      const saveResponse = await fetch("/api/api-keys", {
+      const saveResponse = await authFetch("/api/api-keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider: settings.aiProvider, apiKey: apiKey.trim() }),
@@ -144,7 +145,7 @@ export function SettingsForm() {
 
     startTransition(async () => {
       try {
-        const response = await fetch("/api/settings", {
+        const response = await authFetch("/api/settings", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -187,7 +188,7 @@ export function SettingsForm() {
     setIsDeleting(true);
 
     try {
-      const response = await fetch("/api/account/delete", {
+      const response = await authFetch("/api/account/delete", {
         method: "POST",
       });
       const payload = (await response.json()) as DeleteAccountResponse;

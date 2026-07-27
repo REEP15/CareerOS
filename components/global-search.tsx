@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
+import { authFetch } from "@/lib/auth-fetch";
 import type { SearchResult } from "@/services/search/search";
 
 type SearchResponse =
@@ -29,7 +30,7 @@ export function GlobalSearch() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await authFetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
       const payload = (await response.json()) as SearchResponse;
 
       if (payload.success) {

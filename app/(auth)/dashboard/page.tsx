@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { DashboardContent } from "@/components/dashboard-content";
 import { PageHeader } from "@/components/page-header";
 import { useAuth } from "@/components/auth-provider";
+import { authFetch } from "@/lib/auth-fetch";
 import type { DashboardMetrics } from "@/services/dashboard/metrics";
 
 export default function DashboardPage() {
@@ -15,7 +16,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      fetch("/api/dashboard")
+      authFetch("/api/dashboard")
         .then((res) => res.json())
         .then((payload) => {
           if (payload.success) {

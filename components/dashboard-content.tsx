@@ -20,6 +20,7 @@ import toast from "react-hot-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { authFetch } from "@/lib/auth-fetch";
 import type { DashboardMetrics } from "@/services/dashboard/metrics";
 
 const PIPELINE_COLORS = [
@@ -69,7 +70,7 @@ export function DashboardContent({ metrics }: { metrics: DashboardMetrics }) {
             return;
         }
 
-        const response = await fetch(endpoint, { method: "POST" });
+        const response = await authFetch(endpoint, { method: "POST" });
         const payload = await response.json();
 
         if (!response.ok || !payload.success) {

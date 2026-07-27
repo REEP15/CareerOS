@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { authFetch } from "@/lib/auth-fetch";
 import { APPLICATION_STATUS_LABELS, ApplicationStatus, type Application } from "@/types/application";
 import type { CoverLetter } from "@/types/coverLetter";
 import type { JobPosting } from "@/types/job";
@@ -161,7 +162,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
   const handleCollect = () => {
     startTransition(async () => {
       try {
-        const response = await fetch("/api/jobs/collect", { method: "POST" });
+        const response = await authFetch("/api/jobs/collect", { method: "POST" });
         const payload = (await response.json()) as CollectJobsResponse;
 
         if (!response.ok || !payload.success) {
@@ -182,7 +183,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
   const handleMatch = () => {
     startTransition(async () => {
       try {
-        const response = await fetch("/api/jobs/match", { method: "POST" });
+        const response = await authFetch("/api/jobs/match", { method: "POST" });
         const payload = (await response.json()) as MatchJobsResponse;
 
         if (!response.ok || !payload.success) {
@@ -203,7 +204,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
   const handleJobAction = (endpoint: string, jobId: string, successMessage: string) => {
     startTransition(async () => {
       try {
-        const response = await fetch(endpoint, {
+        const response = await authFetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ jobId }),

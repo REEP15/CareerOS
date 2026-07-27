@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { JobsCollectorPanel } from "@/components/jobs-collector-panel";
 import { PageHeader } from "@/components/page-header";
 import { useAuth } from "@/components/auth-provider";
+import { authFetch } from "@/lib/auth-fetch";
 import type { JobPosting } from "@/types/job";
 
 type JobWithApplicationPackage = JobPosting & {
@@ -23,11 +24,11 @@ export default function JobsPage() {
   useEffect(() => {
     if (!loading && user) {
       Promise.all([
-        fetch("/api/jobs").then((res) => res.json()),
-        fetch("/api/matches").then((res) => res.json()),
-        fetch("/api/tailored-resumes").then((res) => res.json()),
-        fetch("/api/cover-letters").then((res) => res.json()),
-        fetch("/api/applications").then((res) => res.json()),
+        authFetch("/api/jobs").then((res) => res.json()),
+        authFetch("/api/matches").then((res) => res.json()),
+        authFetch("/api/tailored-resumes").then((res) => res.json()),
+        authFetch("/api/cover-letters").then((res) => res.json()),
+        authFetch("/api/applications").then((res) => res.json()),
       ]).then(([jobsRes, matchesRes, resumesRes, coverLettersRes, applicationsRes]) => {
         const jobs = jobsRes.success ? jobsRes.jobs : [];
         const matches = matchesRes.success ? matchesRes.matches : [];

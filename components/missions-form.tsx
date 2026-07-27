@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { authFetch } from "@/lib/auth-fetch";
 import type { MissionInput } from "@/types/mission";
 
 type MissionResponse =
@@ -178,7 +179,7 @@ export function MissionsForm({ initialData = EMPTY_MISSION, isEdit = false, redi
   const handleSave = () => {
     startTransition(async () => {
       try {
-        const response = await fetch("/api/missions", {
+        const response = await authFetch("/api/missions", {
           method: isEdit ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(isEdit ? { id: initialData.id as string, action: "update", data: form } : form),

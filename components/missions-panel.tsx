@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { authFetch } from "@/lib/auth-fetch";
 import type { Mission, MissionInput } from "@/types/mission";
 
 type MissionsResponse =
@@ -47,7 +48,7 @@ export function MissionsPanel() {
   const [isPending, startTransition] = useTransition();
 
   const loadMissions = () => {
-    void fetch("/api/missions")
+    void authFetch("/api/missions")
       .then((response) => response.json())
       .then((payload: MissionsResponse) => {
         if (payload.success) {
@@ -63,7 +64,7 @@ export function MissionsPanel() {
   const handleSave = () => {
     startTransition(async () => {
       try {
-        const response = await fetch("/api/missions", {
+        const response = await authFetch("/api/missions", {
           method: editingId ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(
@@ -91,7 +92,7 @@ export function MissionsPanel() {
   const handleAction = (id: string, action: "delete" | "duplicate" | "enable" | "disable") => {
     startTransition(async () => {
       try {
-        const response = await fetch("/api/missions", {
+        const response = await authFetch("/api/missions", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id, action }),

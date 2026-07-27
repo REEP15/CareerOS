@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { JobDetailPanel } from "@/components/job-detail-panel";
 import { PageHeader } from "@/components/page-header";
 import { useAuth } from "@/components/auth-provider";
+import { authFetch } from "@/lib/auth-fetch";
 import type { ApplicationPackage } from "@/services/apply/tracker";
 import type { TailoredResume } from "@/types/tailoredResume";
 import type { CoverLetter } from "@/types/coverLetter";
@@ -27,9 +28,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   useEffect(() => {
     if (!loading && user && id) {
       Promise.all([
-        fetch(`/api/jobs/${id}`).then((res) => res.json()),
-        fetch(`/api/tailored-resumes/${id}`).then((res) => res.json()),
-        fetch(`/api/cover-letters/${id}`).then((res) => res.json()),
+        authFetch(`/api/jobs/${id}`).then((res) => res.json()),
+        authFetch(`/api/tailored-resumes/${id}`).then((res) => res.json()),
+        authFetch(`/api/cover-letters/${id}`).then((res) => res.json()),
       ]).then(([pkgRes, resumesRes, coverLettersRes]) => {
         if (pkgRes.success) {
           setApplicationPackage(pkgRes.package);

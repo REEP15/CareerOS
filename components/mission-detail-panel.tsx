@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { authFetch } from "@/lib/auth-fetch";
 import type { Mission } from "@/types/mission";
 
 type MissionResponse =
@@ -22,7 +23,7 @@ export function MissionDetailPanel({ mission }: { mission: Mission }) {
   const handleAction = (action: "delete" | "duplicate" | "enable" | "disable") => {
     startTransition(async () => {
       try {
-        const response = await fetch("/api/missions", {
+        const response = await authFetch("/api/missions", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: mission.id, action }),

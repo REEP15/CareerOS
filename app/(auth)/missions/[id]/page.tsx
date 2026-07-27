@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { MissionDetailPanel } from "@/components/mission-detail-panel";
 import { useAuth } from "@/components/auth-provider";
+import { authFetch } from "@/lib/auth-fetch";
 import type { Mission } from "@/types/mission";
 
 export default function MissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,7 +23,7 @@ export default function MissionDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     if (!loading && user && id) {
-      fetch(`/api/missions/${id}`)
+      authFetch(`/api/missions/${id}`)
         .then((res) => res.json())
         .then((payload) => {
           if (payload.success) {

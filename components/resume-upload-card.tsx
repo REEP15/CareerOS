@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/auth-provider";
-import { getAuth as getFirebaseAuth } from "@/lib/firebase";
+import { authFetch } from "@/lib/auth-fetch";
 import type { ResumeProfile } from "@/types/resume";
 
 type ResumeUploadResponse = {
@@ -37,17 +37,11 @@ export function ResumeUploadCard() {
       setError(null);
 
       try {
-        const auth = getFirebaseAuth();
-        const token = await user.getIdToken();
-
         const formData = new FormData();
         formData.append("file", selectedFile);
 
-        const uploadResponse = await fetch("/api/resume", {
+        const uploadResponse = await authFetch("/api/resume", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
           body: formData,
         });
 

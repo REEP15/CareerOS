@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { authFetch } from "@/lib/auth-fetch";
 import type { ApplicationPackage } from "@/services/apply/tracker";
 import {
   APPLICATION_STATUS_LABELS,
@@ -49,7 +50,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
   const handleAction = (endpoint: string, body: Record<string, unknown>, successMessage: string) => {
     startTransition(async () => {
       try {
-        const response = await fetch(endpoint, {
+        const response = await authFetch(endpoint, {
           method: endpoint.includes("/applications") ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
