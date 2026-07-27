@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { logApply, withRetry } from "@/services/apply/logger";
 import { getKnownApplicationFields } from "@/services/apply/forms";
 import { getSubmitPauseMessage } from "@/services/apply/submit";
-import { publicUrlToFilePath } from "@/services/apply/upload";
+import { publicUrlToFilePath, downloadFromFirebaseStorage, cleanupTempFile } from "@/services/apply/upload";
 import type { ApplicationPackage } from "@/services/apply/tracker";
 import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
 import { getSettings } from "@/services/settings/settings";
@@ -165,30 +165,51 @@ async function fillKnownField(page: Page, label: string, value: string): Promise
 }
 
 async function uploadGeneratedFile(page: Page, label: RegExp, pdfUrl: string): Promise<boolean> {
-  const filePath = publicUrlToFilePath(pdfUrl);
+  let filePath: string | null = null;
+  let isTempFile = false;
 
-  if (!filePath || !existsSync(filePath)) {
-    logApply("warn", "Generated file not found for upload", { pdfUrl });
+  try {
+    // Check if it's a Firebase Storage URL (not a public URL)
+    if (!pdfUrl.startsWith("/generated/")) {
+      // Assume it's a Firebase Storage URL - download it to a temp file
+      const tempFilePath = await downloadFromFirebaseStorage(pdfUrl);
+      if (tempFilePath) {
+        filePath = tempFilePath;
+        isTempFile = true;
+      }
+    } else {
+      // It's a public URL - use the local file path
+      filePath = publicUrlToFilePath(pdfUrl);
+    }
+
+    if (!filePath || !existsSync(filePath)) {
+      logApply("warn", "Generated file not found for upload", { pdfUrl });
+      return false;
+    }
+
+    const labelledInput = page.getByLabel(label);
+
+    if ((await labelledInput.count()) > 0) {
+      await labelledInput.first().setInputFiles(filePath);
+      logApply("info", "Uploaded file via label", { label: label.source });
+      return true;
+    }
+
+    const fileInputs = page.locator("input[type='file']");
+
+    if ((await fileInputs.count()) > 0) {
+      await fileInputs.first().setInputFiles(filePath);
+      logApply("info", "Uploaded file via file input");
+      return true;
+    }
+
     return false;
+  } finally {
+    // Clean up temporary file if we created one
+    if (isTempFile && filePath) {
+      await cleanupTempFile(filePath);
+    }
   }
-
-  const labelledInput = page.getByLabel(label);
-
-  if ((await labelledInput.count()) > 0) {
-    await labelledInput.first().setInputFiles(filePath);
-    logApply("info", "Uploaded file via label", { label: label.source });
-    return true;
-  }
-
-  const fileInputs = page.locator("input[type='file']");
-
-  if ((await fileInputs.count()) > 0) {
-    await fileInputs.first().setInputFiles(filePath);
-    logApply("info", "Uploaded file via file input");
-    return true;
-  }
-
-  return false;
 }
 
 async function detectUnknownFields(page: Page): Promise<string[]> {
