@@ -15,7 +15,7 @@ type ResumeUploadResponse = {
   stored: boolean;
 };
 
-export function ResumeUploadCard() {
+export function ResumeUploadCard({ onSuccess }: { onSuccess?: () => void }) {
   const { user } = useAuth();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [response, setResponse] = useState<ResumeUploadResponse | null>(null);
@@ -24,7 +24,7 @@ export function ResumeUploadCard() {
 
   const handleUpload = () => {
     if (!selectedFile) {
-      setError("Choose a PDF resume before uploading.");
+      setError("Choose a PDF or DOCX resume before uploading.");
       return;
     }
 
@@ -54,6 +54,9 @@ export function ResumeUploadCard() {
         }
 
         setResponse(payload);
+        if (onSuccess) {
+          onSuccess();
+        }
       } catch (err) {
         setResponse(null);
         setError("An unexpected error occurred while uploading the resume.");
@@ -74,13 +77,12 @@ export function ResumeUploadCard() {
       <CardContent className="space-y-5">
         <div className="space-y-2">
           <Input
-            accept="application/pdf"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             type="file"
             onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
           />
           <p className="text-sm text-muted-foreground">
-            The parser is provider-agnostic. If no AI extractor is configured, CareerOS falls back
-            to deterministic extraction heuristics.
+            Upload PDF or DOCX files. The parser supports both formats and extracts text automatically.
           </p>
         </div>
         <Button onClick={handleUpload} disabled={isPending || !selectedFile}>

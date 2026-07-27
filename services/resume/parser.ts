@@ -7,15 +7,32 @@ type PdfParseResult = {
   text?: string;
 };
 
+const PARSER_VERSION = "1.0.0";
+
 export async function parseResume(file: File): Promise<ResumeProfile> {
-  const extractedText = normalizeWhitespace(await extractTextFromPdf(file));
+  let extractedText = "";
+  
+  if (file.type === "application/pdf") {
+    extractedText = normalizeWhitespace(await extractTextFromPdf(file));
+  } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
+             file.name.endsWith(".docx")) {
+    extractedText = normalizeWhitespace(await extractTextFromDocx(file));
+  } else {
+    // Fallback: try to extract as text
+    extractedText = normalizeWhitespace(await file.text());
+  }
+
   const provider = getResumeExtractionProvider();
 
   if (provider) {
     const aiProfile = await provider.extractResumeProfile({ extractedText });
 
     if (aiProfile) {
-      return aiProfile;
+      return {
+        ...aiProfile,
+        parserVersion: PARSER_VERSION,
+        lastParsedAt: new Date().toISOString(),
+      };
     }
   }
 
@@ -27,6 +44,18 @@ async function extractTextFromPdf(file: File) {
   const { default: pdf } = await import("pdf-parse");
   const result = (await pdf(data)) as PdfParseResult;
   return result.text ?? "";
+}
+
+async function extractTextFromDocx(file: File) {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const { default: mammoth } = await import("mammoth");
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value ?? "";
+  } catch (error) {
+    console.error("Error extracting text from DOCX:", error);
+    return "";
+  }
 }
 
 function normalizeWhitespace(value: string) {

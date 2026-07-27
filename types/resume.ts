@@ -42,4 +42,11 @@ export interface ResumeProfile {
   preferredRoles: string[];
   preferredLocations: string[];
   updatedAt: string;
+  // Metadata fields
+  storagePath?: string;
+  uploadedAt?: string;
+  lastParsedAt?: string;
+  parserVersion?: string;
+  sourceFileName?: string;
+  resumeUrl?: string;
 }

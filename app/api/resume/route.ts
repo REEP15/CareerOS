@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { doc, setDoc } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes, deleteObject } from "firebase/storage";
 import { z } from "zod";
 
 import { getDb, getFileStorage, isFirebaseConfigured } from "@/lib/firebase";
@@ -10,7 +10,10 @@ import { parseResume } from "@/services/resume/parser";
 const fileSchema = z
   .instanceof(File)
   .refine((file) => file.size > 0, "Resume file is required.")
-  .refine((file) => file.type === "application/pdf", "Only PDF resumes are supported.");
+  .refine((file) => {
+    const validTypes = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    return validTypes.includes(file.type) || file.name.endsWith(".docx");
+  }, "Only PDF and DOCX resumes are supported.");
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +38,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const storagePath = `resume/${authResult.uid}/${profile.id}/${Date.now()}-${sanitizeFileName(file.name)}`;
+    // Store original file under resumes/{uid}/original.*
+    const storagePath = `resumes/${authResult.uid}/original-${Date.now()}-${sanitizeFileName(file.name)}`;
     const storageReference = ref(getFileStorage(), storagePath);
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     await uploadBytes(storageReference, fileBuffer, {
@@ -43,14 +47,22 @@ export async function POST(request: Request) {
     });
 
     const downloadUrl = await getDownloadURL(storageReference);
-    await setDoc(doc(getDb(), `users/${authResult.uid}/resume`, profile.id), {
+    
+    // Store ResumeProfile with metadata
+    const resumeDoc = {
       ...profile,
+      storagePath,
       sourceFileName: file.name,
       resumeUrl: downloadUrl,
-    });
+      uploadedAt: new Date().toISOString(),
+      lastParsedAt: profile.lastParsedAt || new Date().toISOString(),
+      parserVersion: profile.parserVersion || "1.0.0",
+    };
+
+    await setDoc(doc(getDb(), `users/${authResult.uid}/resume`, profile.id), resumeDoc);
 
     return NextResponse.json({
-      profile,
+      profile: resumeDoc,
       storagePath,
       stored: true,
     });
@@ -61,6 +73,77 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Resume upload failed." },
+      { status: 500 },
+    );
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!isFirebaseConfigured()) {
+      return NextResponse.json({ success: false, error: "Firebase not configured" }, { status: 500 });
+    }
+
+    const docRef = doc(getDb(), `users/${authResult.uid}/resume`, "primary");
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      return NextResponse.json({ success: false, error: "No resume found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, profile: docSnap.data() });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to fetch resume" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!isFirebaseConfigured()) {
+      return NextResponse.json({ success: false, error: "Firebase not configured" }, { status: 500 });
+    }
+
+    const docRef = doc(getDb(), `users/${authResult.uid}/resume`, "primary");
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      return NextResponse.json({ success: false, error: "No resume found" }, { status: 404 });
+    }
+
+    const profile = docSnap.data();
+
+    // Delete from Firebase Storage if storage path exists
+    if (profile.storagePath) {
+      try {
+        const storageReference = ref(getFileStorage(), profile.storagePath);
+        await deleteObject(storageReference);
+      } catch (error) {
+        console.error("Error deleting file from storage:", error);
+      }
+    }
+
+    // Delete from Firestore
+    await deleteDoc(docRef);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to delete resume" },
       { status: 500 },
     );
   }
