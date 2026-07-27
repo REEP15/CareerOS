@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 
-import { AppShell } from "@/components/app-shell";
-import { ProtectedRoute } from "@/components/protected-route";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -18,11 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className="min-h-full bg-background text-foreground antialiased">
-        <Providers>
-          <ProtectedRoute>
-            <AppShell>{children}</AppShell>
-          </ProtectedRoute>
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
