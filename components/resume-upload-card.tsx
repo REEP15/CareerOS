@@ -5,8 +5,11 @@ import { useState, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { authFetch } from "@/lib/auth-fetch";
-import { UploadThingResumeUploader } from "@/components/uploadthing-resume-uploader";
+import { generateReactHelpers } from "@uploadthing/react";
+import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import type { ResumeProfile } from "@/types/resume";
+
+const { useUploadThing } = generateReactHelpers<OurFileRouter>();
 
 type ResumeUploadResponse = {
   profile: ResumeProfile;
@@ -20,48 +23,73 @@ export function ResumeUploadCard({ onSuccess }: { onSuccess?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const handleUploadThingComplete = async (fileUrl: string) => {
+  const { startUpload, isUploading } = useUploadThing("resumeUploader", {
+    onClientUploadComplete: async (files) => {
+      console.log("Upload complete:", files);
+      if (!files || files.length === 0) {
+        setError("Upload failed - no files returned");
+        return;
+      }
+
+      const fileUrl = files[0].ufsUrl;
+      
+      if (!selectedFile) {
+        setError("Please select a file first.");
+        return;
+      }
+
+      // Send to API with UploadThing URL - parsing happens server-side
+      startTransition(async () => {
+        setError(null);
+        
+        try {
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+          formData.append("uploadthingUrl", fileUrl);
+
+          const uploadResponse = await authFetch("/api/resume", {
+            method: "POST",
+            body: formData,
+          });
+
+          const payload = (await uploadResponse.json()) as ResumeUploadResponse | { error: string };
+
+          if (!uploadResponse.ok || "error" in payload) {
+            setResponse(null);
+            setError("error" in payload ? payload.error : "Resume upload failed.");
+            return;
+          }
+
+          setResponse(payload);
+          if (onSuccess) {
+            onSuccess();
+          }
+        } catch (err) {
+          setResponse(null);
+          setError("An unexpected error occurred while uploading the resume.");
+          console.error(err);
+        }
+      });
+    },
+    onUploadError: (error: Error) => {
+      console.error("Upload error:", error);
+      setError(error.message);
+    },
+  });
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedFile(file);
+  };
+
+  const handleUpload = () => {
     if (!selectedFile) {
       setError("Please select a file first.");
       return;
     }
 
-    // Send to API with UploadThing URL - parsing happens server-side
-    startTransition(async () => {
-      setError(null);
-      
-      try {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("uploadthingUrl", fileUrl);
-
-        const uploadResponse = await authFetch("/api/resume", {
-          method: "POST",
-          body: formData,
-        });
-
-        const payload = (await uploadResponse.json()) as ResumeUploadResponse | { error: string };
-
-        if (!uploadResponse.ok || "error" in payload) {
-          setResponse(null);
-          setError("error" in payload ? payload.error : "Resume upload failed.");
-          return;
-        }
-
-        setResponse(payload);
-        if (onSuccess) {
-          onSuccess();
-        }
-      } catch (err) {
-        setResponse(null);
-        setError("An unexpected error occurred while uploading the resume.");
-        console.error(err);
-      }
-    });
-  };
-
-  const handleUploadThingError = (error: Error) => {
-    setError(error.message);
+    setError(null);
+    startUpload([selectedFile]);
   };
 
   return (
@@ -78,20 +106,19 @@ export function ResumeUploadCard({ onSuccess }: { onSuccess?: () => void }) {
           <Input
             accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             type="file"
-            onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+            onChange={handleFileChange}
           />
           <p className="text-sm text-muted-foreground">
             Upload PDF or DOCX files. The parser supports both formats and extracts text automatically.
           </p>
         </div>
-        {selectedFile && (
-          <div className="space-y-2">
-            <UploadThingResumeUploader
-              onUploadComplete={handleUploadThingComplete}
-              onError={handleUploadThingError}
-            />
-          </div>
-        )}
+        <button
+          onClick={handleUpload}
+          disabled={isUploading || isPending || !selectedFile}
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+        >
+          {isUploading || isPending ? "Uploading..." : "Upload Resume"}
+        </button>
         {error ? (
           <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             {error}
