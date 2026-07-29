@@ -10,9 +10,9 @@ const personalInfoSchema = z.object({
   email: z.string().email(),
   phone: z.string().min(1),
   location: z.string().min(1),
-  linkedin: z.string().url().nullable().optional(),
-  github: z.string().url().nullable().optional(),
-  portfolio: z.string().url().nullable().optional(),
+  linkedin: z.string().url().nullable().optional().or(z.literal("")),
+  github: z.string().url().nullable().optional().or(z.literal("")),
+  portfolio: z.string().url().nullable().optional().or(z.literal("")),
 });
 
 const experienceSchema = z.object({
@@ -29,7 +29,7 @@ const projectSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
   technologies: z.array(z.string()).default([]),
-  link: z.string().url().nullable().optional(),
+  link: z.string().url().nullable().optional().or(z.literal("")),
   links: z.array(z.string().url()).default([]),
   bulletPoints: z.array(z.string()).default([]),
 });
@@ -79,9 +79,10 @@ IMPORTANT RULES:
 6. Extract complete bullet points for experience, projects, and certifications
 7. Extract all dates and location information accurately
 8. Handle special characters in skills/technologies correctly (e.g., C++, C#, Node.js, .NET)
-9. Links should be extracted as they appear in the resume
+9. Links should be extracted as they appear in the resume - only populate URL fields when actual URLs are available
 10. For education, extract CGPA, percentage, board, and school information when present
 11. Return null for optional fields when not present (linkedin, github, portfolio, summary, etc.)
+12. Never fabricate or infer URLs from contact information or company names
 
 Return a valid JSON object matching the schema.`;
 
@@ -152,19 +153,41 @@ Return the result as a JSON object with this structure:
 }`;
 
 /**
+ * Estimates token count for text (rough approximation: ~4 chars per token)
+ */
+function estimateTokenCount(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+/**
+ * Truncates text to fit within token limit while preserving structure
+ */
+function truncateText(text: string, maxTokens: number): string {
+  const estimatedTokens = estimateTokenCount(text);
+  if (estimatedTokens <= maxTokens) {
+    return text;
+  }
+  
+  // Truncate proportionally
+  const ratio = maxTokens / estimatedTokens;
+  const maxLength = Math.floor(text.length * ratio);
+  return text.slice(0, maxLength) + "\n\n[Content truncated due to length]";
+}
+
+/**
  * Normalizes profile data to handle null values consistently
  * Converts null values to undefined and ensures proper defaults
  */
 function normalizeProfileData(data: any): any {
   const normalized = { ...data };
   
-  // Normalize personal info
+  // Normalize personal info - strict URL handling
   if (normalized.personal) {
     normalized.personal = {
       ...normalized.personal,
-      linkedin: normalized.personal.linkedin === null ? undefined : normalized.personal.linkedin,
-      github: normalized.personal.github === null ? undefined : normalized.personal.github,
-      portfolio: normalized.personal.portfolio === null ? undefined : normalized.personal.portfolio,
+      linkedin: normalizeUrl(normalized.personal.linkedin),
+      github: normalizeUrl(normalized.personal.github),
+      portfolio: normalizeUrl(normalized.personal.portfolio),
     };
   }
   
@@ -190,7 +213,7 @@ function normalizeProfileData(data: any): any {
   
   normalized.projects = normalized.projects.map((proj: any) => ({
     ...proj,
-    link: proj.link === null ? undefined : proj.link,
+    link: normalizeUrl(proj.link),
   }));
   
   normalized.education = normalized.education.map((edu: any) => ({
@@ -214,6 +237,24 @@ function normalizeProfileData(data: any): any {
   }));
   
   return normalized;
+}
+
+/**
+ * Normalizes URL values - only accepts valid URLs, converts everything else to undefined
+ */
+function normalizeUrl(url: any): string | undefined {
+  if (!url || url === null || url === "") {
+    return undefined;
+  }
+  
+  try {
+    // Validate URL format
+    new URL(url);
+    return url;
+  } catch {
+    // Invalid URL - don't fabricate or infer
+    return undefined;
+  }
 }
 
 export class LLMResumeParser implements ResumeExtractionProvider {
@@ -298,6 +339,16 @@ export class LLMResumeParser implements ResumeExtractionProvider {
   }
 
   private async parseWithChatGPT(uid: string, resumeText: string): Promise<any> {
+    const MAX_TOKENS = 128000; // ChatGPT context limit
+    const systemPromptTokens = estimateTokenCount(SYSTEM_PROMPT);
+    const userPromptTokens = estimateTokenCount(USER_PROMPT(resumeText));
+    const totalTokens = systemPromptTokens + userPromptTokens;
+    
+    if (totalTokens > MAX_TOKENS) {
+      const availableTokens = MAX_TOKENS - systemPromptTokens - 1000; // Buffer
+      resumeText = truncateText(resumeText, availableTokens);
+    }
+    
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: USER_PROMPT(resumeText) },
@@ -308,12 +359,30 @@ export class LLMResumeParser implements ResumeExtractionProvider {
   }
 
   private async parseWithGemini(uid: string, resumeText: string): Promise<any> {
+    const MAX_TOKENS = 1000000; // Gemini context limit
     const prompt = `${SYSTEM_PROMPT}\n\n${USER_PROMPT(resumeText)}`;
-    const response = await makeGeminiRequest(uid, prompt);
+    const estimatedTokens = estimateTokenCount(prompt);
+    
+    if (estimatedTokens > MAX_TOKENS) {
+      const availableTokens = MAX_TOKENS - estimateTokenCount(SYSTEM_PROMPT) - 1000; // Buffer
+      resumeText = truncateText(resumeText, availableTokens);
+    }
+    
+    const response = await makeGeminiRequest(uid, `${SYSTEM_PROMPT}\n\n${USER_PROMPT(resumeText)}`);
     return this.extractJSONFromResponse(response);
   }
 
   private async parseWithDeepSeek(uid: string, resumeText: string): Promise<any> {
+    const MAX_TOKENS = 128000; // DeepSeek context limit
+    const systemPromptTokens = estimateTokenCount(SYSTEM_PROMPT);
+    const userPromptTokens = estimateTokenCount(USER_PROMPT(resumeText));
+    const totalTokens = systemPromptTokens + userPromptTokens;
+    
+    if (totalTokens > MAX_TOKENS) {
+      const availableTokens = MAX_TOKENS - systemPromptTokens - 1000; // Buffer
+      resumeText = truncateText(resumeText, availableTokens);
+    }
+    
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: USER_PROMPT(resumeText) },

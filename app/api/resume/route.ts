@@ -8,9 +8,12 @@ import { removeUndefined } from "@/lib/utils";
 import { parseResume } from "@/services/resume/parser";
 import type { ResumeProfile } from "@/types/resume";
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 const fileSchema = z
   .instanceof(File)
   .refine((file) => file.size > 0, "Resume file is required.")
+  .refine((file) => file.size <= MAX_FILE_SIZE, `File size must be less than ${MAX_FILE_SIZE / 1024 / 1024}MB.`)
   .refine((file) => {
     const validTypes = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
     return validTypes.includes(file.type) || file.name.endsWith(".docx");

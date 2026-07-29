@@ -47,7 +47,7 @@ For local development, create a `.env.local` file in the project root with the s
 
 ## Gemini Model Selection
 
-### Why gemini-2.5-flash?
+### Why gemini-3.6-flash?
 - **Free Tier Compatible**: Works with Gemini's generous free tier (no credit card required)
 - **1M Token Context**: 8x larger than ChatGPT's 128K limit, ideal for resume parsing
 - **Stable Release**: Production-ready with consistent performance
@@ -73,3 +73,52 @@ Resume files are stored in UploadThing, and the file key is preserved for deleti
 - **Deletion**: Uses stored file key instead of parsing from URL
 - **Metadata**: ResumeProfile includes `uploadthingFileKey` field
 - **Cleanup**: Proper file deletion when resume is deleted
+
+## Resume Parsing Pipeline Improvements
+
+### Document Extraction
+- **PDF**: Standard pdf-parse extraction with optimized text preprocessing
+- **DOCX**: Mammoth raw text extraction with proper error handling
+- **Fallback**: Removed unreliable text extraction fallback, now only supports PDF and DOCX
+- **Error Handling**: Proper error messages instead of silent failures
+
+### Text Preprocessing
+- **Conservative Regex**: Reduced aggressive patterns that corrupted date ranges and compound words
+- **Flexible Headers**: Improved section header detection for various formatting styles
+- **Structure Preservation**: Better handling of bullet points and numbering
+
+### LLM Integration
+- **Token Management**: Added token length checking with automatic truncation for large documents
+- **Prompt Consistency**: Standardized prompt construction across all AI providers
+- **URL Handling**: Strict URL validation - never fabricates or infers URLs from contact info
+- **Context Limits**: Respects provider-specific context limits (ChatGPT: 128K, Gemini: 1M, DeepSeek: 128K)
+
+### Schema and Validation
+- **Null Handling**: Accepts null values for all optional fields
+- **URL Validation**: Only validates URL format when non-empty values provided
+- **Normalization**: Consistent null-to-undefined conversion across all fields
+- **Data Preservation**: Single-character skills (R, C) now preserved
+
+### Error Handling
+- **File Size**: 10MB limit enforced with clear error messages
+- **Extraction**: Document extraction failures throw proper errors
+- **Validation**: Comprehensive error messages for parsing failures
+- **Format Support**: Only PDF and DOCX supported with clear rejection of others
+
+### File Upload
+- **Size Validation**: 10MB maximum file size
+- **Type Validation**: Strict MIME type and extension checking
+- **URL Validation**: UploadThing URLs validated before storage
+- **Error Messages**: Clear, actionable error messages for all failure modes
+
+## Testing
+
+Regression tests are available in `services/resume/parser.test.ts` covering:
+- Resumes with embedded hyperlinks
+- Resumes without hyperlinks
+- Multiple supported document formats
+- Multi-page resumes
+- Resumes with partially populated sections
+- URL handling and validation
+- Data preservation
+- Error handling

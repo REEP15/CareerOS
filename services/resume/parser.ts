@@ -14,15 +14,23 @@ export async function parseResume(file: File, uid?: string): Promise<ResumeProfi
 
   let extractedText = "";
   
-  if (file.type === "application/pdf") {
-    const rawText = await extractTextFromPdf(file);
-    extractedText = extractStructuredText(rawText);
-  } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
-             file.name.endsWith(".docx")) {
-    extractedText = extractStructuredText(await extractTextFromDocx(file));
-  } else {
-    // Fallback: try to extract as text
-    extractedText = extractStructuredText(await file.text());
+  try {
+    if (file.type === "application/pdf") {
+      const rawText = await extractTextFromPdf(file);
+      extractedText = extractStructuredText(rawText);
+    } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
+               file.name.endsWith(".docx")) {
+      extractedText = extractStructuredText(await extractTextFromDocx(file));
+    } else {
+      throw new Error(`Unsupported file type: ${file.type}. Only PDF and DOCX files are supported.`);
+    }
+  } catch (error) {
+    console.error("Document extraction failed:", error);
+    throw new Error(`Failed to extract text from document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  if (!extractedText || extractedText.length < 50) {
+    throw new Error("Extracted text is too short or empty. Please ensure the document contains readable text.");
   }
 
   // Only use LLM-based parsing - no regex fallback
@@ -65,9 +73,10 @@ function validateResumeProfile(profile: ResumeProfile): ResumeProfile {
     }
   }
 
-  // Fix project names like "Project 1", "Project 2"
+  // Fix project names like "Project 1", "Project 2" - only if purely numeric
   validated.projects = validated.projects.filter(project => {
-    return !/^Project\s+\d+$/i.test(project.name);
+    // Only filter if it's exactly "Project N" with no other text
+    return !/^Project\s+\d+$/i.test(project.name.trim());
   });
 
   // Fix experience with placeholder names
@@ -103,7 +112,7 @@ function validateResumeProfile(profile: ResumeProfile): ResumeProfile {
     if (/^Page\s*\d+$/i.test(trimmed)) return false; // Page numbers
     if (/^-\s*\d+\/\d+$/.test(trimmed)) return false; // Page fragments
     if (/^MS$/.test(trimmed)) return false; // Common OCR artifact
-    if (trimmed.length < 2) return false; // Too short
+    if (trimmed.length < 1) return false; // Too short (allow single chars like "R", "C")
     return true;
   });
 
@@ -147,6 +156,6 @@ async function extractTextFromDocx(file: File) {
     return result.value ?? "";
   } catch (error) {
     console.error("Error extracting text from DOCX:", error);
-    return "";
+    throw new Error("Failed to extract text from DOCX file");
   }
 }
