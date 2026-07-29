@@ -7,6 +7,7 @@ import { publicUrlToFilePath, downloadFromUrl, cleanupTempFile } from "@/service
 import type { ApplicationPackage } from "@/services/apply/tracker";
 import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
 import { getSettings } from "@/services/settings/settings";
+import { escapeRegExp } from "@/lib/utils";
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 const MAX_RETRIES = 3;
@@ -150,7 +151,7 @@ export async function launchApplicationBrowser(uid: string, applicationPackage: 
 async function fillKnownField(page: Page, label: string, value: string): Promise<boolean> {
   return withRetry(
     async () => {
-      const locator = page.getByLabel(new RegExp(label, "i"));
+      const locator = page.getByLabel(new RegExp(escapeRegExp(label), "i"));
 
       if ((await locator.count()) === 0) {
         return false;

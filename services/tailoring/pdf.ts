@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { escapeRegExp } from "@/lib/utils";
 
 const generatedRoot = path.join(process.cwd(), "public", "generated");
 
@@ -90,5 +91,5 @@ function wrapLine(line: string, maxLength: number) {
 }
 
 function toPdfText(value: string) {
-  return `(${value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)")})`;
+  return `(${escapeRegExp(value)})`;
 }

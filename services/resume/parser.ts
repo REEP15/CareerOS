@@ -1,5 +1,6 @@
 import { getResumeExtractionProvider } from "@/lib/ai";
 import { parsePdf, extractStructuredText } from "@/lib/pdf-parse-wrapper";
+import { escapeRegExp, createSkillPattern } from "@/lib/utils";
 import type { Education, Experience, Project, ResumeProfile, Certification } from "@/types/resume";
 
 // This file should only be imported by server-side code (API routes, server actions, etc.)
@@ -390,7 +391,7 @@ function extractTechnologies(bulletPoints: string[]): string[] {
   const technologies: string[] = [];
   for (const point of bulletPoints) {
     for (const tech of techKeywords) {
-      if (new RegExp(`\\b${tech}\\b`, "i").test(point)) {
+      if (createSkillPattern(tech, "i").test(point)) {
         technologies.push(tech);
       }
     }
@@ -596,7 +597,7 @@ function extractPreferredRoles(extractedText: string, summary: string): string[]
   const matches: string[] = [];
 
   for (const role of roleKeywords) {
-    if (new RegExp(`\\b${escapeRegExp(role)}\\b`, "i").test(source)) {
+    if (createSkillPattern(role, "i").test(source)) {
       matches.push(role);
     }
   }
@@ -675,8 +676,4 @@ function splitSectionEntries(section: string): string[] {
 
 function matchPattern(value: string, expression: RegExp): string | null {
   return value.match(expression)?.[0] ?? null;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
