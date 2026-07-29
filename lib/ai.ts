@@ -4,6 +4,7 @@ import type { ResumeProfile } from "@/types/resume";
 
 export type ResumeExtractionContext = {
   extractedText: string;
+  uid?: string;
 };
 
 export interface ResumeExtractionProvider {

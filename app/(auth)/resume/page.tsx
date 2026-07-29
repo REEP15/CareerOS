@@ -51,7 +51,7 @@ export default function ResumePage() {
       .then((payload: ResumeResponse) => {
         if (payload.success) {
           toast.success("Resume deleted successfully");
-          setProfile(null);
+          setProfile(null); // Clear profile to refresh UI
         } else {
           toast.error(payload.error || "Failed to delete resume");
         }
@@ -238,6 +238,20 @@ export default function ResumePage() {
                             ))}
                           </div>
                         )}
+                        {(project.link || (project.links && project.links.length > 0)) && (
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {project.link && (
+                              <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs">
+                                Project Link
+                              </a>
+                            )}
+                            {project.links && project.links.map((link, lIndex) => (
+                              <a key={lIndex} href={link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs">
+                                Link {lIndex + 1}
+                              </a>
+                            ))}
+                          </div>
+                        )}
                         {project.bulletPoints && project.bulletPoints.length > 0 && (
                           <ul className="text-muted-foreground list-disc list-inside mt-1">
                             {project.bulletPoints.map((point, pIndex) => (
@@ -259,17 +273,21 @@ export default function ResumePage() {
                   <div className="space-y-3">
                     {profile.certifications.map((cert, index) => (
                       <div key={index} className="text-sm border-l-2 border-border pl-3">
-                        <div className="font-medium">{cert.title}</div>
-                        <div className="text-muted-foreground text-xs">
-                          {cert.organization && <span>{cert.organization}</span>}
-                          {cert.dates && <span className="ml-2">{cert.dates}</span>}
-                        </div>
-                        {cert.bulletPoints && cert.bulletPoints.length > 0 && (
-                          <ul className="text-muted-foreground list-disc list-inside mt-1">
-                            {cert.bulletPoints.map((point, pIndex) => (
-                              <li key={pIndex}>{point}</li>
-                            ))}
-                          </ul>
+                        <div className="font-medium">{typeof cert === 'string' ? cert : cert.title}</div>
+                        {typeof cert !== 'string' && (
+                          <>
+                            <div className="text-muted-foreground text-xs">
+                              {cert.organization && <span>{cert.organization}</span>}
+                              {cert.dates && <span className="ml-2">{cert.dates}</span>}
+                            </div>
+                            {cert.bulletPoints && cert.bulletPoints.length > 0 && (
+                              <ul className="text-muted-foreground list-disc list-inside mt-1">
+                                {cert.bulletPoints.map((point, pIndex) => (
+                                  <li key={pIndex}>{point}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </>
                         )}
                       </div>
                     ))}

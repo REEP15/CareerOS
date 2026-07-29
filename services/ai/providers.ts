@@ -48,7 +48,9 @@ export async function makeGeminiRequest(uid: string, prompt: string): Promise<st
     throw new Error("Gemini API key not found.");
   }
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
+  // Use gemini-2.5-flash for free tier compatibility (updated from gemini-1.5-pro)
+  // gemini-2.5-flash is stable, has 1M token context, and is well-supported on free tier
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

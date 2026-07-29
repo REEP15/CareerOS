@@ -38,7 +38,7 @@ export function ResumeUploadCard({ onSuccess }: { onSuccess?: () => void }) {
         return;
       }
  
-      // Send to API with UploadThing URL - parsing happens server-side
+      // Send to API with UploadThing URL and file key - parsing happens server-side
       startTransition(async () => {
         setError(null);
  
@@ -46,6 +46,7 @@ export function ResumeUploadCard({ onSuccess }: { onSuccess?: () => void }) {
           const formData = new FormData();
           formData.append("file", selectedFile);
           formData.append("uploadthingUrl", fileUrl);
+          formData.append("uploadthingFileKey", files[0].key || "");
  
           const uploadResponse = await authFetch("/api/resume", {
             method: "POST",

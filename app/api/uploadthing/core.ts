@@ -35,9 +35,11 @@ export const ourFileRouter = {
     // This code RUNS ON YOUR SERVER after or before upload
     console.log("Upload complete for userId:", metadata.userId);
     console.log("File url", file.ufsUrl);
+    console.log("File key", file.key);
     
     return {
       url: file.ufsUrl,
+      key: file.key,
       userId: metadata.userId,
     };
   }),

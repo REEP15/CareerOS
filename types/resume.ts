@@ -14,6 +14,7 @@ export interface Project {
   description: string;
   technologies: string[];
   link?: string;
+  links?: string[];
   bulletPoints?: string[];
 }
 
@@ -66,4 +67,5 @@ export interface ResumeProfile {
   parserVersion?: string;
   sourceFileName?: string;
   resumeUrl?: string;
+  uploadthingFileKey?: string;
 }
