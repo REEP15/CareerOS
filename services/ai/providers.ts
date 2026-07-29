@@ -111,71 +111,35 @@ export async function makeGeminiRequest(uid: string, prompt: string): Promise<st
     throw new Error("Gemini API key not found.");
   }
 
-  // Debug logging
-  console.log("Gemini API Request Debug:");
-  console.log("  SDK: Native fetch (no dedicated SDK)");
-  console.log("  SDK Version: N/A (using native fetch)");
-  console.log("  API Type: Google AI Studio");
-  console.log("  Endpoint: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent");
-  console.log("  Model Identifier: gemini-2.5-flash");
-  console.log("  API Version: v1beta");
-
-  const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-  console.log("  Request URL:", requestUrl.replace(/key=[^&]+/, "key=REDACTED"));
-
-  const requestBody = {
-    contents: [
-      {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
-      },
-    ],
-    generationConfig: {
-      temperature: 0.7,
-    },
-  };
-  console.log("  Request Payload:", JSON.stringify(requestBody, null, 2));
-
-  const response = await fetch(requestUrl, {
+  // Use gemini-3.6-flash for structured JSON extraction (current stable Flash model)
+  // Temperature set to 0.0 for deterministic JSON output
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(requestBody),
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.0,
+      },
+    }),
   });
-
-  console.log("  Response Status:", response.status, response.statusText);
-  console.log("  Response Headers:");
-  response.headers.forEach((value, key) => {
-    console.log(`    ${key}: ${value}`);
-  });
-  
-  const responseText = await response.text();
-  console.log("  Raw Response Body:", responseText);
 
   if (!response.ok) {
-    console.log("  ERROR DETAILS:");
-    console.log("    Status:", response.status);
-    console.log("    StatusText:", response.statusText);
-    console.log("    Body:", responseText);
-    
-    try {
-      const errorData = JSON.parse(responseText);
-      console.log("  Parsed Error Object:", JSON.stringify(errorData, null, 2));
-    } catch (e) {
-      console.log("  Response could not be parsed as JSON:", e);
-    }
-    
-    console.log("  Stack Trace:");
-    console.trace("Gemini API Error Stack Trace");
-    
-    throw new Error(`Gemini API error: ${response.statusText} - ${responseText}`);
+    const errorText = await response.text();
+    throw new Error(`Gemini API error: ${response.statusText} - ${errorText}`);
   }
 
-  const data = JSON.parse(responseText);
+  const data = await response.json();
   return data.candidates[0]?.content?.parts[0]?.text || "";
 }
 

@@ -26,7 +26,7 @@ CareerOS supports multiple AI providers for resume parsing. Users can provide th
 
 ### Recommended Default: Gemini (Free Tier)
 - `GEMINI_API_KEY` - Gemini API key from Google AI Studio
-- **Model**: `gemini-2.5-flash` (free tier compatible, 1M token context)
+- **Model**: `gemini-3.6-flash` (current stable Flash model for structured JSON extraction)
 - **Why Gemini**: Free tier with generous limits, no credit card required for basic usage
 - **Get API Key**: https://aistudio.google.com/app/apikey
 
