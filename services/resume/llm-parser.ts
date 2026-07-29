@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getSelectedProvider, makeChatGPTRequest, makeGeminiRequest, makeDeepSeekRequest } from "@/services/ai/providers";
+import { getEffectiveProvider, makeChatGPTRequest, makeGeminiRequest, makeDeepSeekRequest } from "@/services/ai/providers";
 import type { ResumeProfile } from "@/types/resume";
 import type { ResumeExtractionProvider, ResumeExtractionContext } from "@/lib/ai";
 
@@ -167,7 +167,7 @@ export class LLMResumeParser implements ResumeExtractionProvider {
         return null;
       }
 
-      const provider = await getSelectedProvider(uid);
+      const provider = await getEffectiveProvider(uid);
       let parsedJSON: any;
 
       switch (provider) {

@@ -14,7 +14,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: Omit<AppSettings, "id" | "updatedAt"> = {
   firebaseConfigured: false,
-  aiProvider: "none",
+  aiProvider: "gemini", // Default to Gemini for free tier compatibility
   playwrightHeadless: false,
   playwrightTimeoutMs: 60_000,
   preferredLocations: [],

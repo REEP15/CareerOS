@@ -2,21 +2,84 @@ import { getApiKey } from "@/services/api-keys/api-keys";
 import { getSettings } from "@/services/settings/settings";
 import type { AiProviderName } from "@/types/settings";
 
-export async function getSelectedProvider(uid: string): Promise<AiProviderName> {
-  const settings = await getSettings(uid);
-  return settings.aiProvider;
+/**
+ * Gets the default provider based on available environment variable keys
+ * This provides automatic fallback when user hasn't configured a provider
+ */
+export function getDefaultProvider(): AiProviderName {
+  // Check for environment variable keys in priority order
+  if (process.env.GEMINI_API_KEY) {
+    return "gemini";
+  }
+  if (process.env.OPENAI_API_KEY) {
+    return "chatgpt";
+  }
+  if (process.env.DEEPSEEK_API_KEY) {
+    return "deepseek";
+  }
+  return "none";
 }
 
-export async function getProviderApiKey(uid: string): Promise<string | undefined> {
-  const provider = await getSelectedProvider(uid);
-  if (provider === "none") {
+/**
+ * Gets the effective provider for AI operations
+ * Falls back to default provider if user provider is "none"
+ */
+export async function getEffectiveProvider(uid: string): Promise<AiProviderName> {
+  const settings = await getSettings(uid);
+  const userProvider = settings.aiProvider;
+  
+  // Debug logging
+  console.log("Provider selection debug:");
+  console.log(`  userProvider: ${userProvider}`);
+  console.log(`  hasGeminiKey: ${!!process.env.GEMINI_API_KEY}`);
+  console.log(`  hasOpenAIKey: ${!!process.env.OPENAI_API_KEY}`);
+  console.log(`  hasDeepSeekKey: ${!!process.env.DEEPSEEK_API_KEY}`);
+  
+  // If user has configured a provider (not "none"), use it
+  if (userProvider !== "none") {
+    console.log(`  selectedProvider: ${userProvider} (user-configured)`);
+    return userProvider;
+  }
+  
+  // Otherwise, fall back to default provider based on environment variables
+  const defaultProvider = getDefaultProvider();
+  console.log(`  selectedProvider: ${defaultProvider} (default from env)`);
+  return defaultProvider;
+}
+
+export async function getSelectedProvider(uid: string): Promise<AiProviderName> {
+  return getEffectiveProvider(uid);
+}
+
+export async function getProviderApiKey(uid: string, provider?: AiProviderName): Promise<string | undefined> {
+  const effectiveProvider = provider || await getEffectiveProvider(uid);
+  
+  if (effectiveProvider === "none") {
     return undefined;
   }
-  return await getApiKey(uid, provider);
+  
+  // First try user's API key for this provider
+  const userApiKey = await getApiKey(uid, effectiveProvider);
+  if (userApiKey) {
+    return userApiKey;
+  }
+  
+  // Fall back to environment variable for default provider
+  if (effectiveProvider === "gemini" && process.env.GEMINI_API_KEY) {
+    return process.env.GEMINI_API_KEY;
+  }
+  if (effectiveProvider === "chatgpt" && process.env.OPENAI_API_KEY) {
+    return process.env.OPENAI_API_KEY;
+  }
+  if (effectiveProvider === "deepseek" && process.env.DEEPSEEK_API_KEY) {
+    return process.env.DEEPSEEK_API_KEY;
+  }
+  
+  return undefined;
 }
 
 export async function makeChatGPTRequest(uid: string, messages: Array<{ role: string; content: string }>): Promise<string> {
-  const apiKey = await getApiKey(uid, "chatgpt");
+  const apiKey = await getProviderApiKey(uid, "chatgpt");
   if (!apiKey) {
     throw new Error("ChatGPT API key not found.");
   }
@@ -43,7 +106,7 @@ export async function makeChatGPTRequest(uid: string, messages: Array<{ role: st
 }
 
 export async function makeGeminiRequest(uid: string, prompt: string): Promise<string> {
-  const apiKey = await getApiKey(uid, "gemini");
+  const apiKey = await getProviderApiKey(uid, "gemini");
   if (!apiKey) {
     throw new Error("Gemini API key not found.");
   }
@@ -80,7 +143,7 @@ export async function makeGeminiRequest(uid: string, prompt: string): Promise<st
 }
 
 export async function makeDeepSeekRequest(uid: string, messages: Array<{ role: string; content: string }>): Promise<string> {
-  const apiKey = await getApiKey(uid, "deepseek");
+  const apiKey = await getProviderApiKey(uid, "deepseek");
   if (!apiKey) {
     throw new Error("DeepSeek API key not found.");
   }
