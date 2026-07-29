@@ -36,7 +36,7 @@ export async function getEffectiveProvider(uid: string): Promise<AiProviderName>
   console.log(`  hasDeepSeekKey: ${!!process.env.DEEPSEEK_API_KEY}`);
   
   // If user has configured a provider (not "none"), use it
-  if (userProvider !== "none") {
+  if (userProvider && userProvider !== "none") {
     console.log(`  selectedProvider: ${userProvider} (user-configured)`);
     return userProvider;
   }

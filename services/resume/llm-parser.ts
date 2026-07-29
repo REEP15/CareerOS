@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getEffectiveProvider, makeChatGPTRequest, makeGeminiRequest, makeDeepSeekRequest } from "@/services/ai/providers";
+import { getSettings } from "@/services/settings/settings";
 import type { ResumeProfile } from "@/types/resume";
 import type { ResumeExtractionProvider, ResumeExtractionContext } from "@/lib/ai";
 
@@ -168,6 +169,13 @@ export class LLMResumeParser implements ResumeExtractionProvider {
       }
 
       const provider = await getEffectiveProvider(uid);
+      
+      // Temporary debug log before LLM request
+      console.log({
+        effectiveProvider: provider,
+        hasGeminiKey: !!process.env.GEMINI_API_KEY,
+      });
+      
       let parsedJSON: any;
 
       switch (provider) {
