@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getDb, isFirebaseConfigured } from "@/lib/firebase";
 import { verifyAuthToken } from "@/lib/server-auth";
+import { removeUndefined } from "@/lib/utils";
 import { parseResume } from "@/services/resume/parser";
 import type { ResumeProfile } from "@/types/resume";
 
@@ -56,7 +57,10 @@ export async function POST(request: Request) {
       parserVersion: profile.parserVersion || "1.0.0",
     };
 
-    await setDoc(doc(getDb(), `users/${authResult.uid}/resume`, profile.id), resumeDoc);
+    // Remove undefined values before sending to Firestore
+    const sanitizedDoc = removeUndefined(resumeDoc);
+
+    await setDoc(doc(getDb(), `users/${authResult.uid}/resume`, profile.id), sanitizedDoc);
 
     return NextResponse.json({
       profile: resumeDoc,
