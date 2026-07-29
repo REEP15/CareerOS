@@ -153,17 +153,33 @@ export default function ResumePage() {
               <div className="space-y-2">
                 <h3 className="font-semibold">Experience</h3>
                 {profile.experience.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {profile.experience.map((exp, index) => (
                       <div key={index} className="text-sm border-l-2 border-border pl-3">
                         <div className="font-medium">{exp.title} at {exp.company}</div>
-                        {exp.location && <div className="text-muted-foreground">{exp.location}</div>}
-                        {exp.highlights.length > 0 && (
+                        <div className="text-muted-foreground text-xs">
+                          {exp.location && <span>{exp.location}</span>}
+                          {(exp.startDate || exp.endDate) && (
+                            <span className="ml-2">
+                              {exp.startDate && <span>{exp.startDate}</span>}
+                              {exp.startDate && exp.endDate && <span> - </span>}
+                              {exp.endDate && <span>{exp.endDate}</span>}
+                            </span>
+                          )}
+                        </div>
+                        {(exp.highlights && exp.highlights.length > 0) && (
                           <ul className="text-muted-foreground list-disc list-inside mt-1">
                             {exp.highlights.map((highlight, hIndex) => (
                               <li key={hIndex}>{highlight}</li>
                             ))}
                           </ul>
+                        )}
+                        {exp.technologies && exp.technologies.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {exp.technologies.map((tech, tIndex) => (
+                              <Badge key={tIndex} variant="outline" className="text-xs">{tech}</Badge>
+                            ))}
+                          </div>
                         )}
                       </div>
                     ))}
@@ -176,11 +192,29 @@ export default function ResumePage() {
               <div className="space-y-2">
                 <h3 className="font-semibold">Education</h3>
                 {profile.education.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {profile.education.map((edu, index) => (
                       <div key={index} className="text-sm border-l-2 border-border pl-3">
                         <div className="font-medium">{edu.degree}</div>
                         <div className="text-muted-foreground">{edu.institution}</div>
+                        <div className="text-muted-foreground text-xs mt-1">
+                          {edu.location && <span>{edu.location}</span>}
+                          {(edu.startYear || edu.endYear) && (
+                            <span className="ml-2">
+                              {edu.startYear && <span>{edu.startYear}</span>}
+                              {edu.startYear && edu.endYear && <span> - </span>}
+                              {edu.endYear && <span>{edu.endYear}</span>}
+                            </span>
+                          )}
+                        </div>
+                        {(edu.cgpa || edu.percentage || edu.board || edu.school) && (
+                          <div className="text-muted-foreground text-xs mt-1">
+                            {edu.cgpa && <span>CGPA: {edu.cgpa}</span>}
+                            {edu.percentage && <span className="ml-2">Percentage: {edu.percentage}%</span>}
+                            {edu.board && <span className="ml-2">Board: {edu.board}</span>}
+                            {edu.school && <span className="ml-2">School: {edu.school}</span>}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -192,17 +226,24 @@ export default function ResumePage() {
               <div className="space-y-2">
                 <h3 className="font-semibold">Projects</h3>
                 {profile.projects.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {profile.projects.map((project, index) => (
                       <div key={index} className="text-sm border-l-2 border-border pl-3">
                         <div className="font-medium">{project.name}</div>
                         <div className="text-muted-foreground">{project.description}</div>
-                        {project.technologies.length > 0 && (
+                        {project.technologies && project.technologies.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {project.technologies.map((tech) => (
-                              <Badge key={tech} variant="outline" className="text-xs">{tech}</Badge>
+                            {project.technologies.map((tech, tIndex) => (
+                              <Badge key={tIndex} variant="outline" className="text-xs">{tech}</Badge>
                             ))}
                           </div>
+                        )}
+                        {project.bulletPoints && project.bulletPoints.length > 0 && (
+                          <ul className="text-muted-foreground list-disc list-inside mt-1">
+                            {project.bulletPoints.map((point, pIndex) => (
+                              <li key={pIndex}>{point}</li>
+                            ))}
+                          </ul>
                         )}
                       </div>
                     ))}
@@ -215,9 +256,22 @@ export default function ResumePage() {
               <div className="space-y-2">
                 <h3 className="font-semibold">Certifications</h3>
                 {profile.certifications.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {profile.certifications.map((cert) => (
-                      <Badge key={cert} variant="outline">{cert}</Badge>
+                  <div className="space-y-3">
+                    {profile.certifications.map((cert, index) => (
+                      <div key={index} className="text-sm border-l-2 border-border pl-3">
+                        <div className="font-medium">{cert.title}</div>
+                        <div className="text-muted-foreground text-xs">
+                          {cert.organization && <span>{cert.organization}</span>}
+                          {cert.dates && <span className="ml-2">{cert.dates}</span>}
+                        </div>
+                        {cert.bulletPoints && cert.bulletPoints.length > 0 && (
+                          <ul className="text-muted-foreground list-disc list-inside mt-1">
+                            {cert.bulletPoints.map((point, pIndex) => (
+                              <li key={pIndex}>{point}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
                     ))}
                   </div>
                 ) : (

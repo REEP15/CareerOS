@@ -122,6 +122,9 @@ function buildFallbackTailoredResume(resume: ResumeProfile, job: JobPosting, mat
       summary: tailoredSummary,
       skills: reorderedSkills,
       projects: prioritizedProjects,
+      certifications: resume.certifications.map(cert => 
+        typeof cert === 'string' ? { title: cert } : cert
+      ),
       updatedAt: new Date().toISOString(),
     },
     diff: {
@@ -142,7 +145,7 @@ function buildFallbackTailoredResume(resume: ResumeProfile, job: JobPosting, mat
 function enforceNoFabrication(master: ResumeProfile, tailored: ResumeProfile): ResumeProfile {
   const masterProjectNames = new Set(master.projects.map((project) => project.name));
   const masterCompanies = new Set(master.experience.map((experience) => experience.company));
-  const masterCertifications = new Set(master.certifications);
+  const masterCertificationTitles = new Set(master.certifications.map((cert) => typeof cert === 'string' ? cert : cert.title));
   const masterSkills = new Set(master.skills);
 
   return {
@@ -151,7 +154,10 @@ function enforceNoFabrication(master: ResumeProfile, tailored: ResumeProfile): R
     skills: tailored.skills.filter((skill) => masterSkills.has(skill)),
     projects: tailored.projects.filter((project) => masterProjectNames.has(project.name)),
     experience: tailored.experience.filter((experience) => masterCompanies.has(experience.company)),
-    certifications: tailored.certifications.filter((certification) => masterCertifications.has(certification)),
+    certifications: tailored.certifications.filter((certification) => {
+      const title = typeof certification === 'string' ? certification : certification.title;
+      return masterCertificationTitles.has(title);
+    }),
     updatedAt: new Date().toISOString(),
   };
 }

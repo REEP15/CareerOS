@@ -5,6 +5,8 @@ export interface Experience {
   startDate?: string;
   endDate?: string;
   highlights: string[];
+  bulletPoints?: string[];
+  technologies?: string[];
 }
 
 export interface Project {
@@ -12,6 +14,7 @@ export interface Project {
   description: string;
   technologies: string[];
   link?: string;
+  bulletPoints?: string[];
 }
 
 export interface Education {
@@ -20,6 +23,20 @@ export interface Education {
   fieldOfStudy?: string;
   startDate?: string;
   endDate?: string;
+  location?: string;
+  startYear?: string;
+  endYear?: string;
+  cgpa?: string;
+  percentage?: string;
+  board?: string;
+  school?: string;
+}
+
+export interface Certification {
+  title: string;
+  organization?: string;
+  dates?: string;
+  bulletPoints?: string[];
 }
 
 export interface ResumeProfile {
@@ -38,7 +55,7 @@ export interface ResumeProfile {
   experience: Experience[];
   projects: Project[];
   education: Education[];
-  certifications: string[];
+  certifications: Certification[];
   preferredRoles: string[];
   preferredLocations: string[];
   updatedAt: string;

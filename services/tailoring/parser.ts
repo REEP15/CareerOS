@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Certification } from "@/types/resume";
 
 const personalSchema = z.object({
   name: z.string(),
@@ -17,6 +18,8 @@ const experienceSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   highlights: z.array(z.string()),
+  bulletPoints: z.array(z.string()).optional(),
+  technologies: z.array(z.string()).optional(),
 });
 
 const projectSchema = z.object({
@@ -24,6 +27,7 @@ const projectSchema = z.object({
   description: z.string(),
   technologies: z.array(z.string()),
   link: z.string().optional(),
+  bulletPoints: z.array(z.string()).optional(),
 });
 
 const educationSchema = z.object({
@@ -32,6 +36,20 @@ const educationSchema = z.object({
   fieldOfStudy: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  location: z.string().optional(),
+  startYear: z.string().optional(),
+  endYear: z.string().optional(),
+  cgpa: z.string().optional(),
+  percentage: z.string().optional(),
+  board: z.string().optional(),
+  school: z.string().optional(),
+});
+
+const certificationSchema = z.object({
+  title: z.string(),
+  organization: z.string().optional(),
+  dates: z.string().optional(),
+  bulletPoints: z.array(z.string()).optional(),
 });
 
 const resumeProfileSchema = z.object({
@@ -42,7 +60,7 @@ const resumeProfileSchema = z.object({
   experience: z.array(experienceSchema),
   projects: z.array(projectSchema),
   education: z.array(educationSchema),
-  certifications: z.array(z.string()),
+  certifications: z.array(z.union([certificationSchema, z.string()])),
   preferredRoles: z.array(z.string()),
   preferredLocations: z.array(z.string()),
   updatedAt: z.string(),
@@ -66,7 +84,20 @@ const tailoredResumeResponseSchema = z.object({
 
 export function parseTailoredResumeResponse(raw: string) {
   const parsedJson = JSON.parse(extractJsonObject(raw));
-  return tailoredResumeResponseSchema.parse(parsedJson);
+  const parsed = tailoredResumeResponseSchema.parse(parsedJson);
+  
+  // Convert certifications from string to Certification format if needed
+  const profile = {
+    ...parsed.profile,
+    certifications: parsed.profile.certifications.map(cert => 
+      typeof cert === 'string' ? { title: cert } : cert
+    ) as Certification[]
+  };
+  
+  return {
+    ...parsed,
+    profile
+  };
 }
 
 function extractJsonObject(raw: string) {
