@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { authFetch } from "@/lib/auth-fetch";
 import { UploadThingResumeUploader } from "@/components/uploadthing-resume-uploader";
-import { parseResume } from "@/services/resume/parser";
 import type { ResumeProfile } from "@/types/resume";
 
 type ResumeUploadResponse = {
@@ -27,18 +26,14 @@ export function ResumeUploadCard({ onSuccess }: { onSuccess?: () => void }) {
       return;
     }
 
-    // Parse the resume locally (we still need the file for text extraction)
+    // Send to API with UploadThing URL - parsing happens server-side
     startTransition(async () => {
       setError(null);
       
       try {
-        const profile = await parseResume(selectedFile);
-        
-        // Send to API with UploadThing URL
         const formData = new FormData();
         formData.append("file", selectedFile);
         formData.append("uploadthingUrl", fileUrl);
-        formData.append("profile", JSON.stringify(profile));
 
         const uploadResponse = await authFetch("/api/resume", {
           method: "POST",

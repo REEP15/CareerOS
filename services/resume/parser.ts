@@ -2,6 +2,9 @@ import { getResumeExtractionProvider } from "@/lib/ai";
 import { parsePdf } from "@/lib/pdf-parse-wrapper";
 import type { Education, Experience, Project, ResumeProfile } from "@/types/resume";
 
+// This file should only be imported by server-side code (API routes, server actions, etc.)
+// It uses Node-only libraries like pdf-parse
+
 const SECTION_MARKERS = ["experience", "projects", "education", "skills", "certifications"] as const;
 
 type PdfParseResult = {

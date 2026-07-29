@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getDb, isFirebaseConfigured } from "@/lib/firebase";
 import { verifyAuthToken } from "@/lib/server-auth";
+import { parseResume } from "@/services/resume/parser";
 import type { ResumeProfile } from "@/types/resume";
 
 const fileSchema = z
@@ -25,17 +26,9 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = fileSchema.parse(formData.get("file"));
     const uploadthingUrl = formData.get("uploadthingUrl") as string | null;
-    const profileJson = formData.get("profile") as string | null;
     
-    // Use the parsed profile from client if available, otherwise parse it
-    let profile: ResumeProfile;
-    if (profileJson) {
-      profile = JSON.parse(profileJson) as ResumeProfile;
-    } else {
-      // Fallback to server-side parsing if profile not provided
-      const { parseResume } = await import("@/services/resume/parser");
-      profile = await parseResume(file);
-    }
+    // Parse the resume server-side
+    const profile = await parseResume(file);
 
     if (!isFirebaseConfigured()) {
       return NextResponse.json(
