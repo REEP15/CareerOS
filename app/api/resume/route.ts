@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes, deleteObject } from "firebase/storage";
 import { z } from "zod";
 
-import { getDb, getFileStorage, isFirebaseConfigured } from "@/lib/firebase";
+import { getDb, isFirebaseConfigured } from "@/lib/firebase";
 import { verifyAuthToken } from "@/lib/server-auth";
-import { parseResume } from "@/services/resume/parser";
+import type { ResumeProfile } from "@/types/resume";
 
 const fileSchema = z
   .instanceof(File)
@@ -25,7 +24,18 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const file = fileSchema.parse(formData.get("file"));
-    const profile = await parseResume(file);
+    const uploadthingUrl = formData.get("uploadthingUrl") as string | null;
+    const profileJson = formData.get("profile") as string | null;
+    
+    // Use the parsed profile from client if available, otherwise parse it
+    let profile: ResumeProfile;
+    if (profileJson) {
+      profile = JSON.parse(profileJson) as ResumeProfile;
+    } else {
+      // Fallback to server-side parsing if profile not provided
+      const { parseResume } = await import("@/services/resume/parser");
+      profile = await parseResume(file);
+    }
 
     if (!isFirebaseConfigured()) {
       return NextResponse.json(
@@ -38,22 +48,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // Store original file under resumes/{uid}/original.*
-    const storagePath = `resumes/${authResult.uid}/original-${Date.now()}-${sanitizeFileName(file.name)}`;
-    const storageReference = ref(getFileStorage(), storagePath);
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
-    await uploadBytes(storageReference, fileBuffer, {
-      contentType: file.type,
-    });
+    if (!uploadthingUrl) {
+      return NextResponse.json({ success: false, error: "UploadThing URL is required" }, { status: 400 });
+    }
 
-    const downloadUrl = await getDownloadURL(storageReference);
-    
-    // Store ResumeProfile with metadata
+    // Store ResumeProfile with UploadThing URL
     const resumeDoc = {
       ...profile,
-      storagePath,
+      storagePath: uploadthingUrl, // Use UploadThing URL as storage path
+      resumeUrl: uploadthingUrl,
       sourceFileName: file.name,
-      resumeUrl: downloadUrl,
       uploadedAt: new Date().toISOString(),
       lastParsedAt: profile.lastParsedAt || new Date().toISOString(),
       parserVersion: profile.parserVersion || "1.0.0",
@@ -63,7 +67,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       profile: resumeDoc,
-      storagePath,
+      storagePath: uploadthingUrl,
       stored: true,
     });
   } catch (error) {
@@ -125,19 +129,10 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: "No resume found" }, { status: 404 });
     }
 
-    const profile = docSnap.data();
+    // Note: UploadThing file deletion would require API integration
+    // For now, we only delete the Firestore record
+    // The file remains in UploadThing storage
 
-    // Delete from Firebase Storage if storage path exists
-    if (profile.storagePath) {
-      try {
-        const storageReference = ref(getFileStorage(), profile.storagePath);
-        await deleteObject(storageReference);
-      } catch (error) {
-        console.error("Error deleting file from storage:", error);
-      }
-    }
-
-    // Delete from Firestore
     await deleteDoc(docRef);
 
     return NextResponse.json({ success: true });
@@ -147,8 +142,4 @@ export async function DELETE(request: Request) {
       { status: 500 },
     );
   }
-}
-
-function sanitizeFileName(fileName: string) {
-  return fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
 }

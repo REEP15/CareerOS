@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/components/auth-provider";
 import { authFetch } from "@/lib/auth-fetch";
+import { UploadThingResumeUploader } from "@/components/uploadthing-resume-uploader";
+import { parseResume } from "@/services/resume/parser";
 import type { ResumeProfile } from "@/types/resume";
 
 type ResumeUploadResponse = {
@@ -16,29 +16,29 @@ type ResumeUploadResponse = {
 };
 
 export function ResumeUploadCard({ onSuccess }: { onSuccess?: () => void }) {
-  const { user } = useAuth();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [response, setResponse] = useState<ResumeUploadResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const handleUpload = () => {
+  const handleUploadThingComplete = async (fileUrl: string) => {
     if (!selectedFile) {
-      setError("Choose a PDF or DOCX resume before uploading.");
+      setError("Please select a file first.");
       return;
     }
 
-    if (!user) {
-      setError("You must be logged in to upload a resume.");
-      return;
-    }
-
+    // Parse the resume locally (we still need the file for text extraction)
     startTransition(async () => {
       setError(null);
-
+      
       try {
+        const profile = await parseResume(selectedFile);
+        
+        // Send to API with UploadThing URL
         const formData = new FormData();
         formData.append("file", selectedFile);
+        formData.append("uploadthingUrl", fileUrl);
+        formData.append("profile", JSON.stringify(profile));
 
         const uploadResponse = await authFetch("/api/resume", {
           method: "POST",
@@ -65,13 +65,17 @@ export function ResumeUploadCard({ onSuccess }: { onSuccess?: () => void }) {
     });
   };
 
+  const handleUploadThingError = (error: Error) => {
+    setError(error.message);
+  };
+
   return (
     <Card className="border-border/80 bg-card/90 shadow-sm">
       <CardHeader>
         <CardTitle>Resume Upload</CardTitle>
         <CardDescription>
           Upload a PDF to extract text, normalize it into a structured profile, and save it to
-          Firestore.
+          Firestore using UploadThing for file storage.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -85,9 +89,14 @@ export function ResumeUploadCard({ onSuccess }: { onSuccess?: () => void }) {
             Upload PDF or DOCX files. The parser supports both formats and extracts text automatically.
           </p>
         </div>
-        <Button onClick={handleUpload} disabled={isPending || !selectedFile}>
-          {isPending ? "Processing..." : "Upload Resume"}
-        </Button>
+        {selectedFile && (
+          <div className="space-y-2">
+            <UploadThingResumeUploader
+              onUploadComplete={handleUploadThingComplete}
+              onError={handleUploadThingError}
+            />
+          </div>
+        )}
         {error ? (
           <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             {error}

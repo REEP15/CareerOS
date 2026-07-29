@@ -44,6 +44,34 @@ export async function downloadFromFirebaseStorage(storagePath: string): Promise<
 }
 
 /**
+ * Download a PDF from UploadThing or Firebase Storage to a temporary local file
+ * This is needed for Playwright to upload files to job application forms
+ */
+export async function downloadFromUrl(fileUrl: string): Promise<string | null> {
+  try {
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      return null;
+    }
+    
+    const buffer = Buffer.from(await response.arrayBuffer());
+    
+    // Create a temporary file path
+    const tempDir = path.join(process.cwd(), "temp");
+    const fileName = path.basename(new URL(fileUrl).pathname);
+    const tempFilePath = path.join(tempDir, fileName);
+    
+    // Write the file to temp directory
+    await writeFile(tempFilePath, buffer);
+    
+    return tempFilePath;
+  } catch (error) {
+    console.error("Error downloading file:", error);
+    return null;
+  }
+}
+
+/**
  * Clean up a temporary file
  */
 export async function cleanupTempFile(filePath: string): Promise<void> {

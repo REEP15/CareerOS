@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { logApply, withRetry } from "@/services/apply/logger";
 import { getKnownApplicationFields } from "@/services/apply/forms";
 import { getSubmitPauseMessage } from "@/services/apply/submit";
-import { publicUrlToFilePath, downloadFromFirebaseStorage, cleanupTempFile } from "@/services/apply/upload";
+import { publicUrlToFilePath, downloadFromUrl, cleanupTempFile } from "@/services/apply/upload";
 import type { ApplicationPackage } from "@/services/apply/tracker";
 import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
 import { getSettings } from "@/services/settings/settings";
@@ -171,8 +171,8 @@ async function uploadGeneratedFile(page: Page, label: RegExp, pdfUrl: string): P
   try {
     // Check if it's a Firebase Storage URL (not a public URL)
     if (!pdfUrl.startsWith("/generated/")) {
-      // Assume it's a Firebase Storage URL - download it to a temp file
-      const tempFilePath = await downloadFromFirebaseStorage(pdfUrl);
+      // Download from URL (could be Firebase Storage or UploadThing)
+      const tempFilePath = await downloadFromUrl(pdfUrl);
       if (tempFilePath) {
         filePath = tempFilePath;
         isTempFile = true;
