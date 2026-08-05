@@ -28,23 +28,13 @@ export async function getEffectiveProvider(uid: string): Promise<AiProviderName>
   const settings = await getSettings(uid);
   const userProvider = settings.aiProvider;
   
-  // Debug logging
-  console.log("Provider selection debug:");
-  console.log(`  userProvider: ${userProvider}`);
-  console.log(`  hasGeminiKey: ${!!process.env.GEMINI_API_KEY}`);
-  console.log(`  hasOpenAIKey: ${!!process.env.OPENAI_API_KEY}`);
-  console.log(`  hasDeepSeekKey: ${!!process.env.DEEPSEEK_API_KEY}`);
-  
   // If user has configured a provider (not "none"), use it
   if (userProvider && userProvider !== "none") {
-    console.log(`  selectedProvider: ${userProvider} (user-configured)`);
     return userProvider;
   }
   
   // Otherwise, fall back to default provider based on environment variables
-  const defaultProvider = getDefaultProvider();
-  console.log(`  selectedProvider: ${defaultProvider} (default from env)`);
-  return defaultProvider;
+  return getDefaultProvider();
 }
 
 export async function getSelectedProvider(uid: string): Promise<AiProviderName> {

@@ -13,6 +13,12 @@ export async function parsePdf(buffer: Buffer, options?: any): Promise<{ text?: 
 /**
  * Preserves document structure during PDF text extraction
  * Returns text with meaningful line breaks and bullet points preserved
+ * 
+ * IMPLEMENTATION NOTE: The current pdf-parse library extracts plain text without 
+ * hyperlink annotations. This is a limitation of the current extraction library, not 
+ * of the PDF format itself. PDF documents can contain hyperlinks, but pdf-parse does 
+ * not expose them. The parsing pipeline remains extraction-library-agnostic and can be 
+ * upgraded to use a library that exposes hyperlink annotations if needed.
  */
 export function extractStructuredText(pdfText: string): string {
   if (!pdfText) return "";

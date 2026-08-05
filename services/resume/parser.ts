@@ -159,3 +159,11 @@ async function extractTextFromDocx(file: File) {
     throw new Error("Failed to extract text from DOCX file");
   }
 }
+
+/**
+ * IMPLEMENTATION NOTE: The current mammoth library extracts plain text without 
+ * hyperlink annotations. This is a limitation of the current extraction library, not 
+ * of the DOCX format itself. DOCX documents can contain hyperlinks, but mammoth's 
+ * extractRawText does not expose them. The parsing pipeline remains extraction-library-agnostic 
+ * and can be upgraded to use a library that exposes hyperlink annotations if needed.
+ */

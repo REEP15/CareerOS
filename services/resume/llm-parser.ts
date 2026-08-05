@@ -10,17 +10,17 @@ const personalInfoSchema = z.object({
   email: z.string().email(),
   phone: z.string().min(1),
   location: z.string().min(1),
-  linkedin: z.string().url().nullable().optional().or(z.literal("")),
-  github: z.string().url().nullable().optional().or(z.literal("")),
-  portfolio: z.string().url().nullable().optional().or(z.literal("")),
+  linkedin: z.string().url().nullable().optional(),
+  github: z.string().url().nullable().optional(),
+  portfolio: z.string().url().nullable().optional(),
 });
 
 const experienceSchema = z.object({
   company: z.string().min(1),
   title: z.string().min(1),
-  location: z.string().nullable().optional(),
-  startDate: z.string().nullable().optional(),
-  endDate: z.string().nullable().optional(),
+  location: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
   bulletPoints: z.array(z.string()).default([]),
   technologies: z.array(z.string()).default([]),
 });
@@ -29,7 +29,7 @@ const projectSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
   technologies: z.array(z.string()).default([]),
-  link: z.string().url().nullable().optional().or(z.literal("")),
+  link: z.string().url().nullable().optional(),
   links: z.array(z.string().url()).default([]),
   bulletPoints: z.array(z.string()).default([]),
 });
@@ -37,22 +37,22 @@ const projectSchema = z.object({
 const educationSchema = z.object({
   institution: z.string().min(1),
   degree: z.string().min(1),
-  fieldOfStudy: z.string().nullable().optional(),
-  location: z.string().nullable().optional(),
-  startDate: z.string().nullable().optional(),
-  endDate: z.string().nullable().optional(),
-  startYear: z.string().nullable().optional(),
-  endYear: z.string().nullable().optional(),
-  cgpa: z.string().nullable().optional(),
-  percentage: z.string().nullable().optional(),
-  board: z.string().nullable().optional(),
-  school: z.string().nullable().optional(),
+  fieldOfStudy: z.string().optional(),
+  location: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  startYear: z.string().optional(),
+  endYear: z.string().optional(),
+  cgpa: z.string().optional(),
+  percentage: z.string().optional(),
+  board: z.string().optional(),
+  school: z.string().optional(),
 });
 
 const certificationSchema = z.object({
   title: z.string().min(1),
-  organization: z.string().nullable().optional(),
-  dates: z.string().nullable().optional(),
+  organization: z.string().optional(),
+  dates: z.string().optional(),
   bulletPoints: z.array(z.string()).default([]),
 });
 
@@ -79,12 +79,18 @@ IMPORTANT RULES:
 6. Extract complete bullet points for experience, projects, and certifications
 7. Extract all dates and location information accurately
 8. Handle special characters in skills/technologies correctly (e.g., C++, C#, Node.js, .NET)
-9. Links should be extracted as they appear in the resume - only populate URL fields when actual URLs are available
+9. URL EXTRACTION RULES:
+   - Only populate URL fields (linkedin, github, portfolio, project links) when you find ACTUAL URLs in the text
+   - URLs must start with http://, https://, or be domain names (e.g., github.com/username)
+   - DO NOT populate URL fields with labels like "GitHub", "LinkedIn", "Live Demo", "GitHub/REEP15"
+   - DO NOT infer or fabricate URLs from usernames, company names, or contact information
+   - If you see "GitHub/REEP15" as a label, do NOT put it in the github URL field
+   - If you see "Live Demo" as a label, do NOT put it in the portfolio URL field
+   - Return null for URL fields when no actual URL is found
 10. For education, extract CGPA, percentage, board, and school information when present
 11. Return null for optional fields when not present (linkedin, github, portfolio, summary, etc.)
-12. Never fabricate or infer URLs from contact information or company names
 
-Return a valid JSON object matching the schema.`;
+Return a valid JSON object matching the schema. All URL fields must contain valid URLs or null - do not use labels like "GitHub" or "LinkedIn".`;
 
 const USER_PROMPT = (resumeText: string) => `Parse the following resume text and extract structured information:
 
@@ -153,6 +159,52 @@ Return the result as a JSON object with this structure:
 }`;
 
 /**
+ * Classifies a value as URL or label
+ * Returns normalized URL or undefined for labels
+ */
+function classifyAndNormalizeUrl(value: any): string | undefined {
+  if (!value || value === null || value === "") {
+    return undefined;
+  }
+  
+  const stringValue = String(value).trim();
+  
+  // Check if it's already a valid URL
+  try {
+    new URL(stringValue);
+    return stringValue;
+  } catch {
+    // Not a valid URL, continue with classification
+  }
+  
+  // Check if it's a domain name without protocol
+  if (/^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.[a-zA-Z]{2,}/.test(stringValue)) {
+    // Domain without protocol - add https://
+    const normalizedUrl = `https://${stringValue}`;
+    try {
+      new URL(normalizedUrl);
+      return normalizedUrl;
+    } catch {
+      return undefined;
+    }
+  }
+  
+  // Check if it starts with www. without protocol
+  if (stringValue.startsWith("www.")) {
+    const normalizedUrl = `https://${stringValue}`;
+    try {
+      new URL(normalizedUrl);
+      return normalizedUrl;
+    } catch {
+      return undefined;
+    }
+  }
+  
+  // If we get here, it's likely a label or invalid
+  return undefined;
+}
+
+/**
  * Estimates token count for text (rough approximation: ~4 chars per token)
  */
 function estimateTokenCount(text: string): number {
@@ -175,86 +227,118 @@ function truncateText(text: string, maxTokens: number): string {
 }
 
 /**
- * Normalizes profile data to handle null values consistently
- * Converts null values to undefined and ensures proper defaults
+ * Single canonical normalization stage
+ * Transforms data into canonical form before validation
  */
 function normalizeProfileData(data: any): any {
   const normalized = { ...data };
   
-  // Normalize personal info - strict URL handling
+  // Normalize personal info
   if (normalized.personal) {
     normalized.personal = {
-      ...normalized.personal,
-      linkedin: normalizeUrl(normalized.personal.linkedin),
-      github: normalizeUrl(normalized.personal.github),
-      portfolio: normalizeUrl(normalized.personal.portfolio),
+      name: trimAndFilter(normalized.personal.name),
+      email: trimAndFilter(normalized.personal.email),
+      phone: trimAndFilter(normalized.personal.phone),
+      location: trimAndFilter(normalized.personal.location),
+      linkedin: classifyAndNormalizeUrl(normalized.personal.linkedin),
+      github: classifyAndNormalizeUrl(normalized.personal.github),
+      portfolio: classifyAndNormalizeUrl(normalized.personal.portfolio),
     };
   }
   
   // Normalize summary
-  normalized.summary = normalized.summary === null ? "" : normalized.summary;
+  normalized.summary = trimAndFilter(normalized.summary) || "";
   
-  // Normalize arrays
-  normalized.skills = normalized.skills || [];
+  // Normalize and deduplicate arrays
+  normalized.skills = deduplicateArray(normalized.skills || []).map(trimAndFilter).filter(Boolean);
   normalized.experience = normalized.experience || [];
   normalized.projects = normalized.projects || [];
   normalized.education = normalized.education || [];
   normalized.certifications = normalized.certifications || [];
-  normalized.preferredRoles = normalized.preferredRoles || [];
-  normalized.preferredLocations = normalized.preferredLocations || [];
+  normalized.preferredRoles = deduplicateArray(normalized.preferredRoles || []).map(trimAndFilter).filter(Boolean);
+  normalized.preferredLocations = deduplicateArray(normalized.preferredLocations || []).map(trimAndFilter).filter(Boolean);
   
   // Normalize nested objects
   normalized.experience = normalized.experience.map((exp: any) => ({
-    ...exp,
-    location: exp.location === null ? undefined : exp.location,
-    startDate: exp.startDate === null ? undefined : exp.startDate,
-    endDate: exp.endDate === null ? undefined : exp.endDate,
+    company: trimAndFilter(exp.company),
+    title: trimAndFilter(exp.title),
+    location: trimOptional(exp.location),
+    startDate: trimOptional(exp.startDate),
+    endDate: trimOptional(exp.endDate),
+    bulletPoints: (exp.bulletPoints || []).map(trimAndFilter).filter(Boolean),
+    technologies: deduplicateArray(exp.technologies || []).map(trimAndFilter).filter(Boolean),
   }));
   
   normalized.projects = normalized.projects.map((proj: any) => ({
-    ...proj,
-    link: normalizeUrl(proj.link),
+    name: trimAndFilter(proj.name),
+    description: trimAndFilter(proj.description),
+    link: classifyAndNormalizeUrl(proj.link),
+    links: (proj.links || []).map(classifyAndNormalizeUrl).filter(Boolean),
+    bulletPoints: (proj.bulletPoints || []).map(trimAndFilter).filter(Boolean),
+    technologies: deduplicateArray(proj.technologies || []).map(trimAndFilter).filter(Boolean),
   }));
   
   normalized.education = normalized.education.map((edu: any) => ({
-    ...edu,
-    fieldOfStudy: edu.fieldOfStudy === null ? undefined : edu.fieldOfStudy,
-    location: edu.location === null ? undefined : edu.location,
-    startDate: edu.startDate === null ? undefined : edu.startDate,
-    endDate: edu.endDate === null ? undefined : edu.endDate,
-    startYear: edu.startYear === null ? undefined : edu.startYear,
-    endYear: edu.endYear === null ? undefined : edu.endYear,
-    cgpa: edu.cgpa === null ? undefined : edu.cgpa,
-    percentage: edu.percentage === null ? undefined : edu.percentage,
-    board: edu.board === null ? undefined : edu.board,
-    school: edu.school === null ? undefined : edu.school,
+    institution: trimAndFilter(edu.institution),
+    degree: trimAndFilter(edu.degree),
+    fieldOfStudy: trimOptional(edu.fieldOfStudy),
+    location: trimOptional(edu.location),
+    startDate: trimOptional(edu.startDate),
+    endDate: trimOptional(edu.endDate),
+    startYear: trimOptional(edu.startYear),
+    endYear: trimOptional(edu.endYear),
+    cgpa: trimOptional(edu.cgpa),
+    percentage: trimOptional(edu.percentage),
+    board: trimOptional(edu.board),
+    school: trimOptional(edu.school),
   }));
   
   normalized.certifications = normalized.certifications.map((cert: any) => ({
-    ...cert,
-    organization: cert.organization === null ? undefined : cert.organization,
-    dates: cert.dates === null ? undefined : cert.dates,
+    title: trimAndFilter(cert.title),
+    organization: trimOptional(cert.organization),
+    dates: trimOptional(cert.dates),
+    bulletPoints: (cert.bulletPoints || []).map(trimAndFilter).filter(Boolean),
   }));
   
   return normalized;
 }
 
 /**
- * Normalizes URL values - only accepts valid URLs, converts everything else to undefined
+ * Trims whitespace and converts empty strings or null to undefined
  */
-function normalizeUrl(url: any): string | undefined {
-  if (!url || url === null || url === "") {
+function trimAndFilter(value: any): string | undefined {
+  if (value === null || value === undefined) {
     return undefined;
   }
-  
-  try {
-    // Validate URL format
-    new URL(url);
-    return url;
-  } catch {
-    // Invalid URL - don't fabricate or infer
-    return undefined;
+  const trimmed = String(value).trim();
+  return trimmed === "" ? undefined : trimmed;
+}
+
+/**
+ * Trims whitespace but allows empty strings (for optional string fields)
+ */
+function trimOptional(value: any): string {
+  if (value === null || value === undefined) {
+    return "";
   }
+  return String(value).trim();
+}
+
+/**
+ * Trims whitespace but keeps empty strings for fields that can be empty
+ */
+function trimKeepEmpty(value: any): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  return String(value).trim();
+}
+
+/**
+ * Deduplicates an array while preserving order
+ */
+function deduplicateArray<T>(array: T[]): T[] {
+  return Array.from(new Set(array));
 }
 
 export class LLMResumeParser implements ResumeExtractionProvider {
@@ -297,39 +381,39 @@ export class LLMResumeParser implements ResumeExtractionProvider {
         return null;
       }
 
-      // Validate and parse the response
-      const validatedData = resumeProfileSchema.parse(parsedJSON);
+      // Normalize data first (canonical transformation before validation)
+      const normalizedData = normalizeProfileData(parsedJSON);
 
-      // Normalize null values to undefined for consistency
-      const normalizedData = normalizeProfileData(validatedData);
+      // Validate and parse the response (Zod is the single validation authority)
+      const validatedData = resumeProfileSchema.parse(normalizedData);
 
       // Convert to ResumeProfile format
       return {
         id: "primary",
         personal: {
-          ...normalizedData.personal,
-          linkedin: normalizedData.personal.linkedin || undefined,
-          github: normalizedData.personal.github || undefined,
-          portfolio: normalizedData.personal.portfolio || undefined,
+          ...validatedData.personal,
+          linkedin: validatedData.personal.linkedin || undefined,
+          github: validatedData.personal.github || undefined,
+          portfolio: validatedData.personal.portfolio || undefined,
         },
-        summary: normalizedData.summary || "",
-        skills: normalizedData.skills,
-        experience: normalizedData.experience.map((exp: any) => ({
+        summary: validatedData.summary || "",
+        skills: validatedData.skills,
+        experience: validatedData.experience.map((exp: any) => ({
           ...exp,
           highlights: exp.bulletPoints,
           bulletPoints: exp.bulletPoints,
           technologies: exp.technologies.length > 0 ? exp.technologies : undefined,
         })),
-        projects: normalizedData.projects.map((proj: any) => ({
+        projects: validatedData.projects.map((proj: any) => ({
           ...proj,
           link: proj.link || undefined,
           links: proj.links.length > 0 ? proj.links : undefined,
           bulletPoints: proj.bulletPoints.length > 0 ? proj.bulletPoints : undefined,
         })),
-        education: normalizedData.education,
-        certifications: normalizedData.certifications,
-        preferredRoles: normalizedData.preferredRoles,
-        preferredLocations: normalizedData.preferredLocations,
+        education: validatedData.education,
+        certifications: validatedData.certifications,
+        preferredRoles: validatedData.preferredRoles,
+        preferredLocations: validatedData.preferredLocations,
         updatedAt: new Date().toISOString(),
       };
     } catch (error) {
