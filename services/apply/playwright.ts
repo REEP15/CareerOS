@@ -99,14 +99,14 @@ export async function launchApplicationBrowser(uid: string, applicationPackage: 
     }
 
     if (applicationPackage.tailoredResume) {
-      const uploaded = await uploadGeneratedFile(page, /resume|cv/i, applicationPackage.tailoredResume.pdfUrl);
+      const uploaded = await uploadGeneratedFile(page, /resume|cv/i, applicationPackage.tailoredResume.pdfUrl || "");
       if (uploaded) {
         filledFields.push("resume upload");
       }
     }
 
     if (applicationPackage.coverLetter) {
-      const uploaded = await uploadGeneratedFile(page, /cover letter/i, applicationPackage.coverLetter.pdfUrl);
+      const uploaded = await uploadGeneratedFile(page, /cover letter/i, applicationPackage.coverLetter.pdfUrl || "");
       if (uploaded) {
         filledFields.push("cover letter upload");
       }

@@ -2,19 +2,39 @@ import { doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 
 import { getUserApplicationsCollection, getUserJobsCollection, getUserMatchesCollection, getDb, isFirebaseConfigured } from "@/lib/firebase";
 import { ApplicationStatus, type Application, type ApplicationTimelineEvent } from "@/types/application";
-import type { CoverLetter } from "@/types/coverLetter";
 import type { JobPosting } from "@/types/job";
 import type { MatchResult } from "@/types/match";
-import type { TailoredResume } from "@/types/tailoredResume";
-import { getCoverLetter } from "@/services/coverLetter/generator";
-import { getTailoredResume } from "@/services/tailoring/tailor";
+import { createApplicationPackageService } from "@/services/tailoring/package";
+import type { ApplicationPackage as NewApplicationPackage } from "@/types/application";
 
 export type ApplicationPackage = {
   application: Application;
-  coverLetter: CoverLetter | null;
+  coverLetter: {
+    versionLabel: string;
+    content: string;
+    pdfUrl?: string;
+  } | null;
   job: JobPosting;
   match: MatchResult | null;
-  tailoredResume: TailoredResume | null;
+  tailoredResume: {
+    versionLabel: string;
+    content: any;
+    pdfUrl?: string;
+    diff: {
+      summary: {
+        before: string;
+        after: string;
+      };
+      skills: {
+        before: string[];
+        after: string[];
+      };
+      experience: {
+        before: string[];
+        after: string[];
+      };
+    };
+  } | null;
 };
 
 export type ApplicationResult = {
@@ -30,8 +50,36 @@ export async function getApplication(uid: string, jobId: string): Promise<Applic
     return null;
   }
 
-  const snapshot = await getDoc(doc(getUserApplicationsCollection(uid), jobId));
-  return snapshot.exists() ? normalizeApplication(snapshot.data() as Application) : null;
+  const packageService = createApplicationPackageService();
+  const pkg = await packageService.getApplicationPackage(uid, jobId);
+  
+  if (!pkg) {
+    return null;
+  }
+
+  return {
+    id: pkg.id,
+    userId: pkg.userId,
+    jobId: pkg.id,
+    status: pkg.status === "draft" ? ApplicationStatus.NOT_APPLIED : pkg.status as ApplicationStatus,
+    resumeVersion: pkg.tailoredResume.id,
+    coverLetterVersion: pkg.coverLetter.editedAt || pkg.coverLetter.generatedAt,
+    appliedAt: pkg.status === "submitted" ? pkg.updatedAt : undefined,
+    updatedAt: pkg.updatedAt,
+    createdAt: pkg.generatedAt,
+    notes: "",
+    timeline: [
+      {
+        id: `${Date.now()}`,
+        applicationId: pkg.id,
+        type: "created",
+        timestamp: pkg.generatedAt,
+        details: "Application package created",
+        status: pkg.status,
+        note: "",
+      },
+    ],
+  };
 }
 
 export async function getStoredApplications(uid: string) {
@@ -39,8 +87,32 @@ export async function getStoredApplications(uid: string) {
     return [];
   }
 
-  const snapshot = await getDocs(getUserApplicationsCollection(uid));
-  return snapshot.docs.map((document) => normalizeApplication(document.data()));
+  const packageService = createApplicationPackageService();
+  const packages = await packageService.listApplicationPackages(uid);
+  
+  return packages.map((pkg: NewApplicationPackage) => ({
+    id: pkg.id,
+    userId: pkg.userId,
+    jobId: pkg.id,
+    status: pkg.status === "draft" ? ApplicationStatus.NOT_APPLIED : pkg.status as ApplicationStatus,
+    resumeVersion: pkg.tailoredResume.id,
+    coverLetterVersion: pkg.coverLetter.editedAt || pkg.coverLetter.generatedAt,
+    appliedAt: pkg.status === "submitted" ? pkg.updatedAt : undefined,
+    updatedAt: pkg.updatedAt,
+    createdAt: pkg.generatedAt,
+    notes: "",
+    timeline: [
+      {
+        id: `${Date.now()}`,
+        applicationId: pkg.id,
+        type: "created",
+        timestamp: pkg.generatedAt,
+        details: "Application package created",
+        status: pkg.status,
+        note: "",
+      },
+    ],
+  }));
 }
 
 function normalizeApplication(application: Application): Application {
@@ -49,21 +121,6 @@ function normalizeApplication(application: Application): Application {
     status: application.status ?? ApplicationStatus.NOT_APPLIED,
     timeline: application.timeline ?? [],
   };
-}
-
-function appendTimelineEvent(
-  existing: ApplicationTimelineEvent[] | undefined,
-  status: ApplicationStatus,
-  note?: string,
-): ApplicationTimelineEvent[] {
-  return [
-    ...(existing ?? []),
-    {
-      status,
-      timestamp: new Date().toISOString(),
-      note,
-    },
-  ];
 }
 
 export async function upsertApplication(uid: string, input: {
@@ -78,25 +135,34 @@ export async function upsertApplication(uid: string, input: {
     throw new Error("Firebase environment variables are missing.");
   }
 
-  const existing = await getApplication(uid, input.jobId);
-  const statusChanged = existing?.status !== input.status;
-  const application: Application = {
+  const packageService = createApplicationPackageService();
+  // Map old status to new status
+  const newStatus = input.status === ApplicationStatus.NOT_APPLIED ? "draft" : input.status as any;
+  await packageService.updatePackageStatus(uid, input.jobId, newStatus);
+
+  return {
     id: input.jobId,
+    userId: uid,
     jobId: input.jobId,
     status: input.status,
-    resumeVersion: input.resumeVersion ?? existing?.resumeVersion,
-    coverLetterVersion: input.coverLetterVersion ?? existing?.coverLetterVersion,
-    appliedAt: input.status === ApplicationStatus.APPLIED ? new Date().toISOString() : existing?.appliedAt,
+    resumeVersion: input.resumeVersion,
+    coverLetterVersion: input.coverLetterVersion,
+    appliedAt: input.status === ApplicationStatus.APPLIED ? new Date().toISOString() : undefined,
     updatedAt: new Date().toISOString(),
-    notes: input.notes ?? existing?.notes,
-    timeline: statusChanged
-      ? appendTimelineEvent(existing?.timeline, input.status, input.timelineNote)
-      : existing?.timeline ?? [],
+    createdAt: new Date().toISOString(),
+    notes: input.notes,
+    timeline: [
+      {
+        id: `${Date.now()}`,
+        applicationId: input.jobId,
+        type: "updated",
+        timestamp: new Date().toISOString(),
+        details: input.timelineNote,
+        status: input.status,
+        note: input.timelineNote,
+      },
+    ],
   };
-
-  await setDoc(doc(getUserApplicationsCollection(uid), input.jobId), application);
-
-  return application;
 }
 
 export async function updateApplicationStatus(uid: string, jobId: string, status: ApplicationStatus, note?: string) {
@@ -126,7 +192,13 @@ export async function loadApplicationPackage(uid: string, jobId: string): Promis
     throw new Error("Firebase environment variables are missing.");
   }
 
-  const application = await getApplication(uid, jobId);
+  const packageService = createApplicationPackageService();
+  const newPackage = await packageService.getApplicationPackage(uid, jobId);
+  
+  if (!newPackage) {
+    throw new Error("Application package not found.");
+  }
+
   const [jobSnapshot, matchSnapshot] = await Promise.all([
     getDoc(doc(getUserJobsCollection(uid), jobId)),
     getDoc(doc(getUserMatchesCollection(uid), jobId)),
@@ -136,26 +208,54 @@ export async function loadApplicationPackage(uid: string, jobId: string): Promis
     throw new Error("Job not found.");
   }
 
-  const resumeVersion = application?.resumeVersion;
-  const coverLetterVersion = application?.coverLetterVersion;
-
-  const [tailoredResume, coverLetter] = await Promise.all([
-    getTailoredResume(uid, jobId, resumeVersion),
-    getCoverLetter(uid, jobId, coverLetterVersion),
-  ]);
-
   return {
-    application:
-      application ??
-      ({
-        id: jobId,
-        jobId,
-        status: ApplicationStatus.NOT_APPLIED,
-        timeline: [],
-      } satisfies Application),
-    coverLetter,
+    application: {
+      id: newPackage.id,
+      userId: newPackage.userId,
+      jobId: newPackage.id,
+      status: newPackage.status === "draft" ? ApplicationStatus.NOT_APPLIED : newPackage.status as ApplicationStatus,
+      resumeVersion: newPackage.tailoredResume.id,
+      coverLetterVersion: newPackage.coverLetter.editedAt || newPackage.coverLetter.generatedAt,
+      appliedAt: newPackage.status === "submitted" ? newPackage.updatedAt : undefined,
+      updatedAt: newPackage.updatedAt,
+      createdAt: newPackage.generatedAt,
+      notes: "",
+      timeline: [
+        {
+          id: `${Date.now()}`,
+          applicationId: newPackage.id,
+          type: "created",
+          timestamp: newPackage.generatedAt,
+          details: "Application package created",
+          status: newPackage.status,
+          note: "",
+        },
+      ],
+    },
+    coverLetter: {
+      versionLabel: newPackage.coverLetter.editedAt || newPackage.coverLetter.generatedAt,
+      content: newPackage.coverLetter.content,
+      pdfUrl: undefined,
+    },
     job: jobSnapshot.data() as JobPosting,
     match: matchSnapshot.exists() ? (matchSnapshot.data() as MatchResult) : null,
-    tailoredResume,
+    tailoredResume: {
+      versionLabel: newPackage.tailoredResume.id,
+      content: newPackage.tailoredResume.content,
+      diff: {
+        summary: {
+          before: "Original resume",
+          after: "Tailored resume",
+        },
+        skills: {
+          before: newPackage.tailoredResume.content.skills || [],
+          after: newPackage.tailoredResume.content.skills || [],
+        },
+        experience: {
+          before: newPackage.tailoredResume.content.experience?.map((e: any) => e.company) || [],
+          after: newPackage.tailoredResume.content.experience?.map((e: any) => e.company) || [],
+        },
+      },
+    },
   };
 }

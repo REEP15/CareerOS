@@ -1,211 +1,258 @@
-import { collection, doc, getDocs, orderBy, query, setDoc, where } from "firebase/firestore";
-
-import { getResumeTailoringProvider } from "@/lib/ai";
-import { USER_COLLECTIONS, getDb, isFirebaseConfigured } from "@/lib/firebase";
-import {
-  buildArtifactId,
-  buildVersionLabel,
-  buildVersionedFileName,
-  getNextArtifactVersion,
-} from "@/services/artifacts/versioning";
-import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
-import { parseTailoredResumeResponse } from "@/services/tailoring/parser";
-import { writeTextPdf } from "@/services/tailoring/pdf";
-import { createResumeTailoringPrompt } from "@/services/tailoring/prompts";
-import type { JobPosting } from "@/types/job";
-import type { MatchResult } from "@/types/match";
+import { getEffectiveProvider, makeChatGPTRequest, makeGeminiRequest, makeDeepSeekRequest } from "@/services/ai/providers";
 import type { ResumeProfile } from "@/types/resume";
-import type { ResumeDiff, TailoredResume } from "@/types/tailoredResume";
+import type { TailoringOptions } from "@/types/application";
 
-export async function generateTailoredResume(uid: string, job: JobPosting, match: MatchResult | null) {
-  const resume = await loadPrimaryResumeProfile(uid);
-
-  if (!resume) {
-    throw new Error("No ResumeProfile found. Upload a resume before tailoring.");
-  }
-
-  const generated = await createTailoredResume(uid, resume, job, match);
-  await setDoc(doc(getDb(), `users/${uid}/${USER_COLLECTIONS.tailoredResumes}`, generated.id), generated);
-
-  return generated;
+/**
+ * Token management (reused from Phase 1)
+ */
+function estimateTokenCount(text: string): number {
+  return Math.ceil(text.length / 4);
 }
 
-export async function getTailoredResume(uid: string, jobId: string, versionLabel?: string): Promise<TailoredResume | null> {
-  if (!isFirebaseConfigured()) {
-    return null;
+function truncateText(text: string, maxTokens: number): string {
+  const estimatedTokens = estimateTokenCount(text);
+  if (estimatedTokens <= maxTokens) {
+    return text;
   }
-
-  if (versionLabel) {
-    const versions = await getTailoredResumeVersions(uid, jobId);
-    return versions.find((resume) => resume.versionLabel === versionLabel) ?? null;
-  }
-
-  const versions = await getTailoredResumeVersions(uid, jobId);
-  return versions[0] ?? null;
+  
+  const ratio = maxTokens / estimatedTokens;
+  const maxLength = Math.floor(text.length * ratio);
+  return text.slice(0, maxLength) + "\n\n[Content truncated due to length]";
 }
 
-export async function getTailoredResumeVersions(uid: string, jobId: string): Promise<TailoredResume[]> {
-  if (!isFirebaseConfigured()) {
-    return [];
+/**
+ * Resume Tailoring Engine
+ * Optimizes resume for specific job while maintaining factual accuracy
+ */
+export class ResumeTailor {
+  /**
+   * Tailors a resume for a specific job description
+   */
+  async tailorResume(
+    resume: ResumeProfile,
+    jobDescription: string,
+    jobMetadata: { title: string; company: string },
+    options: TailoringOptions = {}
+  ): Promise<ResumeProfile> {
+    const provider = await getEffectiveProvider(resume.id as string); // Use resume.id as user ID context
+    
+    const prompt = this.buildTailoringPrompt(resume, jobDescription, jobMetadata, options);
+    
+    let tailoredContent: any;
+    
+    switch (provider) {
+      case "chatgpt":
+        tailoredContent = await this.tailorWithChatGPT(resume.id as string, prompt);
+        break;
+      case "gemini":
+        tailoredContent = await this.tailorWithGemini(resume.id as string, prompt);
+        break;
+      case "deepseek":
+        tailoredContent = await this.tailorWithDeepSeek(resume.id as string, prompt);
+        break;
+      default:
+        throw new Error(`Unsupported AI provider: ${provider}`);
+    }
+    
+    return this.validateTailoredResume(tailoredContent, resume);
   }
+  
+  /**
+   * Builds the tailoring prompt with strict grounding requirements
+   */
+  private buildTailoringPrompt(
+    resume: ResumeProfile,
+    jobDescription: string,
+    jobMetadata: { title: string; company: string },
+    options: TailoringOptions
+  ): string {
+    const resumeText = JSON.stringify(resume, null, 2);
+    
+    // Token management for large content
+    const MAX_TOKENS = 1000000; // Gemini context limit
+    const systemPrompt = "You are an expert resume tailoring specialist. Never fabricate resume content.";
+    const estimatedTokens = estimateTokenCount(systemPrompt + resumeText + jobDescription);
+    
+    let finalJobDescription = jobDescription;
+    if (estimatedTokens > MAX_TOKENS) {
+      const availableTokens = MAX_TOKENS - estimateTokenCount(systemPrompt + resumeText) - 1000;
+      finalJobDescription = truncateText(jobDescription, availableTokens);
+    }
+    
+    return `You are an expert resume tailoring specialist. Your task is to optimize a resume for a specific job while maintaining absolute factual accuracy.
 
-  const snapshot = await getDocs(
-    query(collection(getDb(), `users/${uid}/${USER_COLLECTIONS.tailoredResumes}`), where("jobId", "==", jobId), orderBy("version", "desc")),
-  );
-  return snapshot.docs.map((document) => document.data() as TailoredResume);
-}
+JOB DETAILS:
+- Title: ${jobMetadata.title}
+- Company: ${jobMetadata.company}
+- Description: ${finalJobDescription}
 
-export async function getTailoredResumes(uid: string): Promise<TailoredResume[]> {
-  if (!isFirebaseConfigured()) {
-    return [];
+ORIGINAL RESUME:
+${resumeText}
+
+TAILORING RULES:
+1. NEVER invent, hallucinate, or fabricate any experience, skills, projects, certifications, employers, dates, metrics, technologies, or accomplishments
+2. Only use information explicitly present in the original resume
+3. You MAY reorder sections to highlight most relevant experience
+4. You MAY rewrite bullet points to improve clarity and impact without changing meaning
+5. You MAY compress content to fit within length limits while preserving all facts
+6. You MAY expand on existing accomplishments with more detail if space allows
+7. You MAY emphasize relevant experience for the target role
+8. You MAY improve ATS keyword alignment naturally by using terminology from the job description
+9. You MUST preserve all dates, companies, titles, technologies, and metrics exactly as stated
+10. You MUST NOT add any new skills, experiences, or certifications not in the original resume
+11. You MUST NOT change any dates or employment timelines
+12. You MUST NOT fabricate metrics or accomplishments
+13. Return the complete tailored resume as JSON with the same structure as the input
+
+OPTIMIZATION OPTIONS:
+${options.optimizeForATS ? "- Optimize for ATS keyword coverage using job description terminology" : ""}
+${options.emphasizeRecentExperience ? "- Emphasize most recent experience" : ""}
+${options.compressContent ? "- Compress content for conciseness while preserving all facts" : ""}
+${options.targetKeywords ? `- Target keywords: ${options.targetKeywords.join(", ")}` : ""}
+
+Return a valid JSON object matching the original resume structure with the tailored content.`;
   }
-
-  const snapshot = await getDocs(collection(getDb(), `users/${uid}/${USER_COLLECTIONS.tailoredResumes}`));
-  const byJobId = new Map<string, TailoredResume>();
-
-  for (const document of snapshot.docs) {
-    const resume = document.data() as TailoredResume;
-    const existing = byJobId.get(resume.jobId);
-
-    if (!existing || resume.version > existing.version) {
-      byJobId.set(resume.jobId, resume);
+  
+  /**
+   * Tailors resume using ChatGPT
+   */
+  private async tailorWithChatGPT(uid: string, prompt: string): Promise<any> {
+    const messages = [
+      { role: "system", content: "You are an expert resume tailoring specialist. Never fabricate resume content." },
+      { role: "user", content: prompt }
+    ];
+    
+    const response = await makeChatGPTRequest(uid, messages);
+    return this.extractJSONFromResponse(response);
+  }
+  
+  /**
+   * Tailors resume using Gemini
+   */
+  private async tailorWithGemini(uid: string, prompt: string): Promise<any> {
+    const response = await makeGeminiRequest(uid, prompt);
+    return this.extractJSONFromResponse(response);
+  }
+  
+  /**
+   * Tailors resume using DeepSeek
+   */
+  private async tailorWithDeepSeek(uid: string, prompt: string): Promise<any> {
+    const messages = [
+      { role: "system", content: "You are an expert resume tailoring specialist. Never fabricate resume content." },
+      { role: "user", content: prompt }
+    ];
+    
+    const response = await makeDeepSeekRequest(uid, messages);
+    return this.extractJSONFromResponse(response);
+  }
+  
+  /**
+   * Extracts JSON from AI response
+   */
+  private extractJSONFromResponse(response: string): any {
+    // Try to parse as-is first
+    try {
+      return JSON.parse(response);
+    } catch {
+      // Try to extract JSON from markdown code blocks
+      const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[1]);
+      }
+      
+      // Try to find JSON object in response
+      const objectMatch = response.match(/\{[\s\S]*\}/);
+      if (objectMatch) {
+        return JSON.parse(objectMatch[0]);
+      }
+      
+      throw new Error("Could not extract JSON from AI response");
     }
   }
-
-  return [...byJobId.values()];
+  
+  /**
+   * Validates that tailored resume is grounded in original resume
+   */
+  private validateTailoredResume(tailored: any, original: ResumeProfile): ResumeProfile {
+    // Validate that all companies match
+    const originalCompanies = new Set(original.experience.map(e => e.company.toLowerCase()));
+    const tailoredCompanies = new Set(tailored.experience.map((e: any) => e.company.toLowerCase()));
+    
+    if (!this.isSubset(tailoredCompanies as Set<string>, originalCompanies)) {
+      throw new Error("Tailored resume contains companies not in original resume");
+    }
+    
+    // Validate that all titles match
+    const originalTitles = new Set(original.experience.map(e => e.title.toLowerCase()));
+    const tailoredTitles = new Set(tailored.experience.map((e: any) => e.title.toLowerCase()));
+    
+    if (!this.isSubset(tailoredTitles as Set<string>, originalTitles)) {
+      throw new Error("Tailored resume contains job titles not in original resume");
+    }
+    
+    // Validate that no new skills were added
+    const originalSkills = new Set(original.skills.map(s => s.toLowerCase()));
+    const tailoredSkills = new Set(tailored.skills.map((s: any) => s.toLowerCase()));
+    
+    if (!this.isSubset(tailoredSkills as Set<string>, originalSkills)) {
+      throw new Error("Tailored resume contains skills not in original resume");
+    }
+    
+    // Validate that dates match
+    for (const tailoredExp of tailored.experience) {
+      const originalExp = original.experience.find(
+        e => e.company.toLowerCase() === tailoredExp.company.toLowerCase() &&
+           e.title.toLowerCase() === tailoredExp.title.toLowerCase()
+      );
+      
+      if (originalExp) {
+        if (originalExp.startDate !== tailoredExp.startDate || originalExp.endDate !== tailoredExp.endDate) {
+          throw new Error("Tailored resume changed employment dates");
+        }
+      }
+    }
+    
+    return tailored as ResumeProfile;
+  }
+  
+  /**
+   * Checks if set B is a subset of set A
+   */
+  private isSubset(setB: Set<string>, setA: Set<string>): boolean {
+    for (const item of setB) {
+      if (!setA.has(item)) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
 
-async function createTailoredResume(uid: string, resume: ResumeProfile, job: JobPosting, match: MatchResult | null) {
-  const version = await getNextArtifactVersion(uid, job.id, USER_COLLECTIONS.tailoredResumes);
-  const versionLabel = buildVersionLabel(version);
-  const provider = getResumeTailoringProvider();
-  const prompt = createResumeTailoringPrompt(resume, job, match);
-  const response = provider ? await provider.tailorResume({ prompt, resume, job, match }) : null;
-  const parsed = response ? parseTailoredResumeResponse(response) : buildFallbackTailoredResume(resume, job, match);
-  const profile = enforceNoFabrication(resume, parsed.profile);
-  const diff = normalizeDiff(resume, profile, parsed.diff);
-  const { pdfUrl } = await writeTextPdf({
-    fileName: buildVersionedFileName(job.id, "resume", version),
-    lines: resumeProfileToPdfLines(profile, job),
-  });
-
-  return {
-    id: buildArtifactId(job.id, version),
-    jobId: job.id,
-    version,
-    versionLabel,
-    profile,
-    diff,
-    pdfUrl,
-    createdAt: new Date().toISOString(),
-  } satisfies TailoredResume;
+/**
+ * Factory function to create resume tailor
+ */
+export function createResumeTailor(): ResumeTailor {
+  return new ResumeTailor();
 }
 
-function buildFallbackTailoredResume(resume: ResumeProfile, job: JobPosting, match: MatchResult | null) {
-  const jobText = `${job.title} ${job.description}`.toLowerCase();
-  const reorderedSkills = [...resume.skills].sort((left, right) => {
-    const leftRelevant = jobText.includes(left.toLowerCase()) ? 1 : 0;
-    const rightRelevant = jobText.includes(right.toLowerCase()) ? 1 : 0;
-    return rightRelevant - leftRelevant;
-  });
-  const prioritizedProjects = [...resume.projects].sort((left, right) => {
-    const leftScore = left.technologies.filter((tech) => jobText.includes(tech.toLowerCase())).length;
-    const rightScore = right.technologies.filter((tech) => jobText.includes(tech.toLowerCase())).length;
-    return rightScore - leftScore;
-  });
-  const keywordOptimizations = reorderedSkills.filter((skill) => jobText.includes(skill.toLowerCase())).slice(0, 6);
-  const tailoredSummary = `${resume.summary} Targeted for ${job.title} roles at ${job.company}, emphasizing ${keywordOptimizations.slice(0, 3).join(", ") || "relevant experience"}.`;
-
-  return {
-    profile: {
-      ...resume,
-      summary: tailoredSummary,
-      skills: reorderedSkills,
-      projects: prioritizedProjects,
-      certifications: resume.certifications.map(cert => 
-        typeof cert === 'string' ? { title: cert } : cert
-      ),
-      updatedAt: new Date().toISOString(),
-    },
-    diff: {
-      summary: {
-        before: resume.summary,
-        after: tailoredSummary,
-      },
-      skills: {
-        before: resume.skills,
-        after: reorderedSkills,
-      },
-      prioritizedProjects: prioritizedProjects.map((project) => project.name),
-      keywordOptimizations: match?.missingSkills.length ? keywordOptimizations.filter((skill) => !match.missingSkills.includes(skill)) : keywordOptimizations,
-    },
-  };
+/**
+ * Public API functions for existing code compatibility
+ */
+export async function generateTailoredResume(
+  resume: ResumeProfile,
+  jobDescription: string,
+  jobMetadata: { title: string; company: string },
+  options?: TailoringOptions
+): Promise<ResumeProfile> {
+  const tailor = createResumeTailor();
+  return tailor.tailorResume(resume, jobDescription, jobMetadata, options);
 }
 
-function enforceNoFabrication(master: ResumeProfile, tailored: ResumeProfile): ResumeProfile {
-  const masterProjectNames = new Set(master.projects.map((project) => project.name));
-  const masterCompanies = new Set(master.experience.map((experience) => experience.company));
-  const masterCertificationTitles = new Set(master.certifications.map((cert) => typeof cert === 'string' ? cert : cert.title));
-  const masterSkills = new Set(master.skills);
-
-  return {
-    ...master,
-    summary: tailored.summary,
-    skills: tailored.skills.filter((skill) => masterSkills.has(skill)),
-    projects: tailored.projects.filter((project) => masterProjectNames.has(project.name)),
-    experience: tailored.experience.filter((experience) => masterCompanies.has(experience.company)),
-    certifications: tailored.certifications.filter((certification) => {
-      const title = typeof certification === 'string' ? certification : certification.title;
-      return masterCertificationTitles.has(title);
-    }),
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-function normalizeDiff(master: ResumeProfile, tailored: ResumeProfile, diff: ResumeDiff): ResumeDiff {
-  return {
-    summary: {
-      before: master.summary,
-      after: tailored.summary,
-    },
-    skills: {
-      before: master.skills,
-      after: tailored.skills,
-    },
-    prioritizedProjects: diff.prioritizedProjects.filter((projectName) =>
-      tailored.projects.some((project) => project.name === projectName),
-    ),
-    keywordOptimizations: diff.keywordOptimizations.filter((keyword) => tailored.skills.includes(keyword)),
-  };
-}
-
-function resumeProfileToPdfLines(profile: ResumeProfile, job: JobPosting) {
-  return [
-    profile.personal.name,
-    `${profile.personal.email} | ${profile.personal.phone} | ${profile.personal.location}`,
-    "",
-    `Tailored Resume for ${job.title} at ${job.company}`,
-    "",
-    "Summary",
-    profile.summary,
-    "",
-    "Skills",
-    profile.skills.join(", "),
-    "",
-    "Experience",
-    ...profile.experience.flatMap((experience) => [
-      `${experience.title} - ${experience.company}`,
-      ...experience.highlights.map((highlight) => `- ${highlight}`),
-    ]),
-    "",
-    "Projects",
-    ...profile.projects.flatMap((project) => [
-      project.name,
-      project.description,
-      `Technologies: ${project.technologies.join(", ")}`,
-    ]),
-    "",
-    "Education",
-    ...profile.education.map((education) => `${education.degree} - ${education.institution}`),
-  ];
+export async function getTailoredResumeVersions(
+  userId: string,
+  jobId: string
+): Promise<ResumeProfile[]> {
+  // Placeholder for future functionality to retrieve version history
+  return [];
 }

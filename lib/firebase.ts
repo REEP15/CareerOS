@@ -1,6 +1,6 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth as firebaseGetAuth, type Auth } from "firebase/auth";
-import { collection, getFirestore, type CollectionReference, type Firestore } from "firebase/firestore";
+import { collection, doc, getDoc, getFirestore, type CollectionReference, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 import type { Application } from "@/types/application";
@@ -49,6 +49,8 @@ export const USER_COLLECTIONS = {
   tailoredResumes: "tailoredResumes",
   notifications: "notifications",
 } as const;
+
+export { doc, getDoc } from "firebase/firestore";
 
 export function isFirebaseConfigured() {
   return Boolean(

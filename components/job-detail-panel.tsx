@@ -318,7 +318,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
               <CardContent className="space-y-3">
                 {[...application.timeline].reverse().map((event, index) => (
                   <div key={`${event.timestamp}-${index}`} className="border-l-2 border-border pl-4">
-                    <p className="text-sm font-medium">{APPLICATION_STATUS_LABELS[event.status]}</p>
+                    <p className="text-sm font-medium">{event.status ? APPLICATION_STATUS_LABELS[event.status as keyof typeof APPLICATION_STATUS_LABELS] : "Unknown"}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(event.timestamp).toLocaleString()}
                     </p>

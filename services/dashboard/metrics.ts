@@ -41,16 +41,19 @@ export type DashboardMetrics = {
 let cachedMetrics: Map<string, { metrics: DashboardMetrics; timestamp: number }> = new Map();
 const CACHE_TTL_MS = 30_000;
 
-const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  [ApplicationStatus.NOT_APPLIED]: "Not Applied",
-  [ApplicationStatus.PREPARING]: "Preparing",
-  [ApplicationStatus.READY]: "Ready",
-  [ApplicationStatus.APPLYING]: "Applying",
-  [ApplicationStatus.REVIEW_REQUIRED]: "Review Required",
-  [ApplicationStatus.APPLIED]: "Applied",
-  [ApplicationStatus.INTERVIEW]: "Interview",
-  [ApplicationStatus.REJECTED]: "Rejected",
-  [ApplicationStatus.OFFER]: "Offer",
+const STATUS_LABELS: Record<string, string> = {
+  not_applied: "Not Applied",
+  preparing: "Preparing",
+  ready: "Ready",
+  applying: "Applying",
+  review_required: "Review Required",
+  applied: "Applied",
+  interview: "Interview",
+  rejected: "Rejected",
+  offer: "Offer",
+  draft: "Draft",
+  reviewed: "Reviewed",
+  submitted: "Submitted",
 };
 
 export function invalidateDashboardCache(uid?: string) {
