@@ -84,6 +84,65 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
     });
   };
 
+  const handleGenerateResume = () => {
+    startTransition(async () => {
+      try {
+        const response = await authFetch("/api/resume/tailor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jobId: job.id,
+            jobTitle: job.title,
+            jobCompany: job.company,
+            jobDescription: job.description,
+            jobLocation: job.location,
+            jobSalary: job.salary,
+            jobUrl: job.applyUrl,
+          }),
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.success) {
+          toast.error(payload.error ?? "Failed to generate tailored resume.");
+          return;
+        }
+
+        toast.success("Tailored resume generated.");
+        router.refresh();
+      } catch {
+        toast.error("An unexpected error occurred.");
+      }
+    });
+  };
+
+  const handleGenerateCoverLetter = () => {
+    startTransition(async () => {
+      try {
+        const response = await authFetch("/api/cover-letter/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jobId: job.id,
+            jobTitle: job.title,
+            jobCompany: job.company,
+            jobDescription: job.description,
+          }),
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.success) {
+          toast.error(payload.error ?? "Failed to generate cover letter.");
+          return;
+        }
+
+        toast.success("Cover letter generated.");
+        router.refresh();
+      } catch {
+        toast.error("An unexpected error occurred.");
+      }
+    });
+  };
+
   const handleStatusChange = (newStatus: ApplicationStatus) => {
     setStatus(newStatus);
     handleAction("/api/applications", { jobId: job.id, status: newStatus }, "Status updated.");
@@ -395,9 +454,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
               <Button
                 variant="outline"
                 disabled={isPending || !match}
-                onClick={() =>
-                  handleAction("/api/resume/tailor", { jobId: job.id }, "Tailored resume generated.")
-                }
+                onClick={handleGenerateResume}
               >
                 <FileText className="h-4 w-4" />
                 Generate Resume
@@ -405,9 +462,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
               <Button
                 variant="outline"
                 disabled={isPending || !match}
-                onClick={() =>
-                  handleAction("/api/cover-letter/generate", { jobId: job.id }, "Cover letter generated.")
-                }
+                onClick={handleGenerateCoverLetter}
               >
                 <Mail className="h-4 w-4" />
                 Generate Cover Letter

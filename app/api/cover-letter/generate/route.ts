@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { verifyAuthToken } from "@/lib/server-auth";
 import { getDb } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { createApplicationPackageService } from "@/services/tailoring/package";
 import { createCoverLetterGenerator } from "@/services/cover-letter/generator";
 import type { ResumeProfile } from "@/types/resume";
@@ -11,6 +11,9 @@ import type { ApplicationPackage } from "@/types/application";
 
 const requestSchema = z.object({
   jobId: z.string().min(1),
+  jobTitle: z.string().min(1),
+  jobCompany: z.string().min(1),
+  jobDescription: z.string().min(1),
 });
 
 export async function POST(request: Request) {
@@ -21,7 +24,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const { jobId } = requestSchema.parse(await request.json());
+    const { jobId, jobTitle, jobCompany, jobDescription } = requestSchema.parse(await request.json());
 
     // Get application package
     const packageService = createApplicationPackageService();
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
     if (!applicationPackage) {
       return NextResponse.json({ 
         success: false, 
-        error: "Application package not found. Please generate application package first." 
+        error: "Application package not found. Please generate tailored resume first." 
       }, { status: 404 });
     }
 
@@ -47,20 +50,27 @@ export async function POST(request: Request) {
 
     const resume = resumeSnapshot.data() as ResumeProfile;
 
-    // Regenerate cover letter
+    // Generate cover letter
     const coverLetterGenerator = createCoverLetterGenerator();
     const newCoverLetter = await coverLetterGenerator.generateCoverLetter(
       resume,
-      applicationPackage.job.description,
-      { title: applicationPackage.job.title, company: applicationPackage.job.company }
+      jobDescription,
+      { title: jobTitle, company: jobCompany }
     );
 
     // Update application package with new cover letter
-    await packageService.updateCoverLetter(authResult.uid, jobId, newCoverLetter);
+    const packageRef = doc(getDb(), `users/${authResult.uid}/application-packages/${jobId}`);
+    await setDoc(packageRef, {
+      coverLetter: {
+        content: newCoverLetter,
+        generatedAt: new Date().toISOString(),
+      },
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
 
     return NextResponse.json({ 
       success: true, 
-      coverLetter: newCoverLetter 
+      message: "Cover letter generated successfully"
     });
 
   } catch (error) {

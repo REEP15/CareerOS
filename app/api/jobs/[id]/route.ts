@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { verifyAuthToken } from "@/lib/server-auth";
-import { loadApplicationPackage } from "@/services/apply/tracker";
+import { getDoc, doc } from "firebase/firestore";
+import { getUserJobsCollection, getUserMatchesCollection, isFirebaseConfigured } from "@/lib/firebase";
+import type { JobPosting } from "@/types/job";
+import type { MatchResult } from "@/types/match";
 
 export async function GET(
   request: Request,
@@ -15,13 +18,30 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const applicationPackage = await loadApplicationPackage(authResult.uid, id);
+    const uid = authResult.uid;
 
-    if (!applicationPackage) {
+    if (!isFirebaseConfigured()) {
+      return NextResponse.json({ success: false, error: "Firebase not configured" }, { status: 500 });
+    }
+
+    // Get job data
+    const jobSnapshot = await getDoc(doc(getUserJobsCollection(uid), id));
+    
+    if (!jobSnapshot.exists()) {
       return NextResponse.json({ success: false, error: "Job not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, package: applicationPackage });
+    const job = jobSnapshot.data() as JobPosting;
+
+    // Get match data if available
+    const matchSnapshot = await getDoc(doc(getUserMatchesCollection(uid), id));
+    const match = matchSnapshot.exists() ? (matchSnapshot.data() as MatchResult) : null;
+
+    return NextResponse.json({ 
+      success: true, 
+      job,
+      match,
+    });
   } catch (error) {
     return NextResponse.json(
       {

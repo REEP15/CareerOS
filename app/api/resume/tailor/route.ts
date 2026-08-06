@@ -3,8 +3,10 @@ import { z } from "zod";
 
 import { verifyAuthToken } from "@/lib/server-auth";
 import { getDb } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { createApplicationPackageService } from "@/services/tailoring/package";
+import { createResumeTailor } from "@/services/tailoring/tailor";
+import { createATSAnalyzer } from "@/services/ats/analyzer";
 import type { ResumeProfile } from "@/types/resume";
 import type { ApplicationPackage, ApplicationStatus } from "@/types/application";
 
@@ -42,24 +44,96 @@ export async function POST(request: Request) {
 
     const resume = resumeSnapshot.data() as ResumeProfile;
 
-    // Create application package
-    const packageService = createApplicationPackageService();
-    const applicationPackage = await packageService.createApplicationPackage(
+    // Generate tailored resume
+    const resumeTailor = createResumeTailor();
+    const tailoredResume = await resumeTailor.tailorResume(
       resume,
-      {
-        id: jobId,
-        title: jobTitle,
-        company: jobCompany,
-        description: jobDescription,
-        location: jobLocation,
-        salary: jobSalary,
-        url: jobUrl,
-      }
+      jobDescription,
+      { title: jobTitle, company: jobCompany },
+      {}
     );
+
+    // Generate ATS analysis
+    const atsAnalyzer = createATSAnalyzer();
+    const atsAnalysis = await atsAnalyzer.analyzeATS(
+      resume,
+      tailoredResume,
+      jobDescription,
+      {}
+    );
+
+    // Check if application package exists
+    const packageService = createApplicationPackageService();
+    const existingPackage = await packageService.getApplicationPackage(authResult.uid, jobId);
+
+    if (existingPackage) {
+      // Update existing package
+      const packageRef = doc(getDb(), `users/${authResult.uid}/application-packages/${jobId}`);
+      await setDoc(packageRef, {
+        tailoredResume: {
+          id: `tailored-${jobId}`,
+          content: tailoredResume,
+          generatedAt: new Date().toISOString(),
+        },
+        atsAnalysis: {
+          originalScore: atsAnalysis.originalScore,
+          tailoredScore: atsAnalysis.tailoredScore,
+          keywordCoverage: atsAnalysis.keywordCoverage,
+          matchedKeywords: atsAnalysis.matchedKeywords,
+          missingKeywords: atsAnalysis.missingKeywords,
+          strengths: atsAnalysis.strengths,
+          weaknesses: atsAnalysis.weaknesses,
+          suggestions: atsAnalysis.suggestions,
+          analysis: atsAnalysis.analysis,
+        },
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } else {
+      // Create new application package
+      const applicationPackage = {
+        id: jobId,
+        userId: authResult.uid,
+        status: "draft" as const,
+        generatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        job: {
+          id: jobId,
+          title: jobTitle,
+          company: jobCompany,
+          description: jobDescription,
+          location: jobLocation,
+          salary: jobSalary,
+          url: jobUrl,
+        },
+        tailoredResume: {
+          id: `tailored-${jobId}`,
+          content: tailoredResume,
+          generatedAt: new Date().toISOString(),
+        },
+        coverLetter: {
+          content: "",
+          generatedAt: new Date().toISOString(),
+        },
+        atsAnalysis: {
+          originalScore: atsAnalysis.originalScore,
+          tailoredScore: atsAnalysis.tailoredScore,
+          keywordCoverage: atsAnalysis.keywordCoverage,
+          matchedKeywords: atsAnalysis.matchedKeywords,
+          missingKeywords: atsAnalysis.missingKeywords,
+          strengths: atsAnalysis.strengths,
+          weaknesses: atsAnalysis.weaknesses,
+          suggestions: atsAnalysis.suggestions,
+          analysis: atsAnalysis.analysis,
+        },
+        originalResumeId: resumeSnapshot.id,
+      };
+
+      await packageService.saveApplicationPackage(applicationPackage);
+    }
 
     return NextResponse.json({ 
       success: true, 
-      applicationPackage 
+      message: "Tailored resume generated successfully"
     });
 
   } catch (error) {

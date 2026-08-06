@@ -91,7 +91,7 @@ export class ApplicationPackageService {
   /**
    * Saves application package to Firestore
    */
-  private async saveApplicationPackage(pkg: ApplicationPackage): Promise<void> {
+  public async saveApplicationPackage(pkg: ApplicationPackage): Promise<void> {
     const packageRef = doc(getDb(), `users/${pkg.userId}/application-packages/${pkg.id}`);
     await setDoc(packageRef, pkg);
   }
