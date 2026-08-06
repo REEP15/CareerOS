@@ -17,6 +17,8 @@
     "baseUrl": "..",
     "paths": {
       "@/*": ["shared/*"],
+      "@/types/*": ["shared/types/*"],
+      "@/lib/*": ["shared/lib/*"],
       "@/shared/*": ["shared/*"],
       "@/services/*": ["services/*"],
       "@services/*": ["services/*"]
