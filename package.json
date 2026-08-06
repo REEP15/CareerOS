@@ -21,6 +21,7 @@
     "next": "16.2.11",
     "pdf-parse": "^1.1.1",
     "pdfkit": "^0.19.1",
+    "playwright": "^1.61.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.82.0",
@@ -39,7 +40,6 @@
     "@types/selenium-webdriver": "^4.1.29",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
-    "playwright": "^1.61.1",
     "selenium-webdriver": "^4.46.0",
     "tailwindcss": "^4",
     "typescript": "^5"

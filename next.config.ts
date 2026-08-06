@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['pdf-parse', 'uploadthing'],
+  serverExternalPackages: ['pdf-parse', 'uploadthing', 'playwright'],
+  turbopack: {
+    // Turbopack configuration for Next.js 16
+  },
 };
 
 export default nextConfig;
