@@ -21,7 +21,13 @@ export async function matchJob(resume: ResumeProfile, job: JobPosting): Promise<
   const parsedEvaluation = provider
     ? parseMatchResponse((await provider.evaluateJobMatch({ prompt, resume, job })) ?? "")
     : buildFallbackEvaluation(resume, job);
-  const overallScore = calculateOverallScore(parsedEvaluation);
+  const overallScore = calculateOverallScore({
+    skillsScore: parsedEvaluation.skillsScore ?? 0,
+    experienceScore: parsedEvaluation.experienceScore ?? 0,
+    educationScore: parsedEvaluation.educationScore ?? 0,
+    locationScore: parsedEvaluation.locationScore ?? 0,
+    salaryScore: parsedEvaluation.salaryScore ?? 0,
+  });
 
   return {
     jobId: job.id,

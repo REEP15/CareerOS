@@ -1,8 +1,8 @@
 import { doc, getDocs, orderBy, query, setDoc } from "firebase/firestore";
 
-import { getUserJobsCollection, isFirebaseConfigured, getDb } from "../../../../shared/lib/firebase";
-import { createJobDuplicateKey } from "@/services/collector/normalize";
-import type { JobPosting } from "../../../../shared/types/job";
+import { getUserJobsCollection, isFirebaseConfigured, getDb } from "@/lib/firebase";
+import { createJobDuplicateKey } from "../collector/normalize";
+import type { JobPosting } from "@/types/job";
 
 export async function saveCollectedJobs(uid: string, jobs: JobPosting[]) {
   if (!isFirebaseConfigured()) {

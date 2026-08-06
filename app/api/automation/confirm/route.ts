@@ -1,11 +1,15 @@
 /**
  * API endpoint to handle user confirmation responses
  * POST /api/automation/confirm
+ * 
+ * NOTE: This endpoint is now a proxy to the worker service.
+ * The worker handles all browser automation and confirmation flows.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuthToken } from "@/shared/lib/server-auth";
-import { handleUserConfirmation } from "@/services/apply/confirmation-service";
+
+const WORKER_URL = process.env.WORKER_URL || 'http://localhost:3001';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,10 +26,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields: jobId, runId" }, { status: 400 });
     }
 
-    // Handle confirmation directly using confirmation service
-    const result = await handleUserConfirmation(authResult.uid, jobId, runId, answer);
+    // Proxy to worker service
+    const workerResponse = await fetch(`${WORKER_URL}/api/automation/confirm`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': authResult.uid,
+      },
+      body: JSON.stringify({ jobId, runId, answer }),
+    });
 
-    return NextResponse.json({ success: true, result });
+    const result = await workerResponse.json();
+
+    if (!workerResponse.ok) {
+      return NextResponse.json(result, { status: workerResponse.status });
+    }
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Confirmation error:", error);
     return NextResponse.json(

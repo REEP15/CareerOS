@@ -19,7 +19,7 @@ type MissionsResponse =
   | { success: false; error: string };
 
 type MissionResponse =
-  | { success: true; mission: Mission }
+  | { success: true; mission: Mission; error?: string }
   | { success: false; error: string };
 
 const EMPTY_MISSION: MissionInput = {
@@ -74,7 +74,7 @@ export function MissionsPanel() {
         const payload = (await response.json()) as MissionResponse;
 
         if (!response.ok || !payload.success) {
-          toast.error(payload.success ? "Failed to save mission." : payload.error);
+          toast.error(payload.error || "Failed to save mission.");
           return;
         }
 
@@ -100,7 +100,7 @@ export function MissionsPanel() {
         const payload = (await response.json()) as MissionResponse;
 
         if (!response.ok || !payload.success) {
-          toast.error(payload.success ? "Action failed." : payload.error);
+          toast.error(payload.error || "Action failed.");
           return;
         }
 

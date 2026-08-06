@@ -3,11 +3,11 @@
  * Replaces iCIMS adapter per requirements
  */
 
-import type { BrowserPage } from "../../../../shared/types/browser";
+import type { BrowserPage } from "@/types/browser";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import { BaseAdapter } from "./base-adapter";
 import type { AdapterFieldHint } from "./base";
-import { AutomationMode } from "../../../../shared/types/collector";
+import { AutomationMode } from "@/types/collector";
 
 export class SmartRecruitersAdapter extends BaseAdapter {
   readonly id = "smartrecruiters";

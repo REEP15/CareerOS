@@ -3,7 +3,7 @@
  * Mirrors v0_phase3/engine/controls.ts
  */
 
-import type { BrowserElement, BrowserPage } from "../../../../shared/types/browser";
+import type { BrowserElement, BrowserPage } from "@/types/browser";
 
 /** Find a control that advances to the next step (not submit) */
 export async function findAdvanceControl(page: BrowserPage): Promise<BrowserElement | null> {

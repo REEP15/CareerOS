@@ -27,6 +27,7 @@ type CollectJobsResponse =
       jobsFound: number;
       added: number;
       duplicates: number;
+      error?: string;
     }
   | {
       success: false;
@@ -39,6 +40,7 @@ type MatchJobsResponse =
       jobsProcessed: number;
       recommended: number;
       averageScore: number;
+      error?: string;
     }
   | {
       success: false;
@@ -169,7 +171,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
         const payload = (await response.json()) as CollectJobsResponse;
 
         if (!response.ok || !payload.success) {
-          toast.error(payload.success ? "Job collection failed." : payload.error);
+          toast.error(payload.error || "Job collection failed.");
           return;
         }
 
@@ -190,7 +192,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
         const payload = (await response.json()) as MatchJobsResponse;
 
         if (!response.ok || !payload.success) {
-          toast.error(payload.success ? "Job matching failed." : payload.error);
+          toast.error(payload.error || "Job matching failed.");
           return;
         }
 

@@ -13,7 +13,7 @@ import { authFetch } from "@/lib/auth-fetch";
 import type { MissionInput } from "@/types/mission";
 
 type MissionResponse =
-  | { success: true; mission: MissionInput }
+  | { success: true; mission: MissionInput; error?: string }
   | { success: false; error: string };
 
 const EMPTY_MISSION: MissionInput = {
@@ -187,7 +187,7 @@ export function MissionsForm({ initialData = EMPTY_MISSION, isEdit = false, redi
         const payload = (await response.json()) as MissionResponse;
 
         if (!response.ok || !payload.success) {
-          toast.error(payload.success ? "Failed to save mission." : payload.error);
+          toast.error(payload.error || "Failed to save mission.");
           return;
         }
 

@@ -4,10 +4,16 @@
 export async function parsePdf(buffer: Buffer, options?: any): Promise<{ text?: string }> {
   // Import the actual pdf-parse library
   const pdfParseModule = await import("pdf-parse");
+  
+  // pdf-parse exports the function as default
   const pdfParse = pdfParseModule.default || pdfParseModule;
   
-  // Call it with the buffer (pdf-parse doesn't support options in the way we tried)
-  return await pdfParse(buffer);
+  if (typeof pdfParse === 'function') {
+    return await pdfParse(buffer);
+  } else {
+    // Try using the module directly
+    return await (pdfParseModule as any)(buffer);
+  }
 }
 
 /**

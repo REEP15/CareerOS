@@ -1,7 +1,7 @@
-import type { JobCollector } from "../../../../shared/types/collector";
+import type { JobCollector } from "@/types/collector";
 
-import { LinkedInCollector } from "@/services/collector/linkedin";
-import { WellfoundCollector } from "@/services/collector/wellfound";
+import { LinkedInCollector } from "../collector/linkedin";
+import { WellfoundCollector } from "../collector/wellfound";
 
 export const collectors: JobCollector[] = [
   new LinkedInCollector(),

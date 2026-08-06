@@ -1,9 +1,9 @@
-import type { JobCollector } from "../../../../shared/types/collector";
-import type { JobPosting } from "../../../../shared/types/job";
-import type { CollectorJobInput, AutomationMode } from "../../../../shared/types/collector";
+import type { JobCollector } from "@/types/collector";
+import type { JobPosting } from "@/types/job";
+import type { CollectorJobInput, AutomationMode } from "@/types/collector";
 import { chromium, type Browser, type Page, type BrowserContext } from "playwright";
 
-import { normalizeJob } from "@/services/collector/normalize";
+import { normalizeJob } from "../collector/normalize";
 
 export abstract class BaseCollector implements JobCollector {
   abstract name: string;

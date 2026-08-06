@@ -3,7 +3,7 @@
  * Automatically includes Firebase ID token in Authorization header
  */
 
-import { getAuth as getFirebaseAuth } from "@/lib/firebase";
+import { getAuth as getFirebaseAuth } from "./firebase";
 
 type AuthenticatedFetchOptions = RequestInit & {
   skipAuth?: boolean;

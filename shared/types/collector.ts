@@ -1,4 +1,4 @@
-import type { JobPosting } from "@/types/job";
+import type { JobPosting } from "./job";
 
 export enum AutomationMode {
   DISCOVERY_ONLY = "discovery_only",

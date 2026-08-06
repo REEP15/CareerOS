@@ -3,11 +3,11 @@
  * Mirrors v0_phase3/adapters/base-adapter.ts
  */
 
-import type { BrowserElement, BrowserPage } from "../../../../shared/types/browser";
-import type { FieldSemantic } from "../../../../shared/types/automation";
+import type { BrowserElement, BrowserPage } from "@/types/browser";
+import type { FieldSemantic } from "@/types/automation";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import type { AdapterFieldHint, SiteAdapter } from "./base";
-import { AutomationMode } from "../../../../shared/types/collector";
+import { AutomationMode } from "@/types/collector";
 
 export abstract class BaseAdapter implements SiteAdapter {
   abstract readonly id: string;

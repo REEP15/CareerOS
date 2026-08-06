@@ -1,6 +1,6 @@
-import { BaseCollector } from "@/services/collector/base";
-import type { CollectorJobInput } from "../../../../shared/types/collector";
-import { AutomationMode } from "../../../../shared/types/collector";
+import { BaseCollector } from "../collector/base";
+import type { CollectorJobInput } from "@/types/collector";
+import { AutomationMode } from "@/types/collector";
 
 export class WellfoundCollector extends BaseCollector {
   name = "Wellfound";

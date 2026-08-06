@@ -3,8 +3,8 @@
  * Mirrors v0_phase3/generic/generic-engine.ts
  */
 
-import type { BrowserPage } from "../../../../shared/types/browser";
-import type { ConfirmationRequest, ResolvedAnswer } from "../../../../shared/types/automation";
+import type { BrowserPage } from "@/types/browser";
+import type { ConfirmationRequest, ResolvedAnswer } from "@/types/automation";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import type { AdapterFieldHint } from "../adapters/base";
 import { resolveAnswer } from "../answer-resolver";

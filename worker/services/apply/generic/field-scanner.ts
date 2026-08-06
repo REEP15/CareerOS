@@ -3,13 +3,13 @@
  * Mirrors v0_phase3/generic/field-scanner.ts
  */
 
-import type { BrowserElement, BrowserPage } from "../../../../shared/types/browser";
+import type { BrowserElement, BrowserPage } from "@/types/browser";
 import type {
   ControlKind,
   DetectedField,
   FieldOption,
   FieldSignals,
-} from "../../../../shared/types/automation";
+} from "@/types/automation";
 import { classifyField } from "../field-classifier";
 
 /**

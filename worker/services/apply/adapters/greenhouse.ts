@@ -3,11 +3,11 @@
  * Mirrors v0_phase3/adapters/sites/greenhouse.ts
  */
 
-import type { BrowserPage } from "../../../../shared/types/browser";
+import type { BrowserPage } from "@/types/browser";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import { BaseAdapter } from "./base-adapter";
 import type { AdapterFieldHint } from "./base";
-import { AutomationMode } from "../../../../shared/types/collector";
+import { AutomationMode } from "@/types/collector";
 
 export class GreenhouseAdapter extends BaseAdapter {
   readonly id = "greenhouse";

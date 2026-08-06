@@ -3,7 +3,7 @@
  * Mirrors v0_phase3/engine/context.ts
  */
 
-import type { ConfirmationRequest, ConfirmationResponse, DetectedField, ResolvedAnswer } from "../../../../shared/types/automation";
+import type { ConfirmationRequest, ConfirmationResponse, DetectedField, ResolvedAnswer } from "@/types/automation";
 import type { ExecutionPhase } from "../state-persistence";
 
 export type LogLevel = "info" | "warn" | "error" | "debug";

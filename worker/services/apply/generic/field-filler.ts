@@ -3,8 +3,8 @@
  * Mirrors v0_phase3/generic/field-filler.ts
  */
 
-import type { BrowserElement } from "../../../../shared/types/browser";
-import type { ControlKind, ResolvedAnswer } from "../../../../shared/types/automation";
+import type { BrowserElement } from "@/types/browser";
+import type { ControlKind, ResolvedAnswer } from "@/types/automation";
 import { SENSITIVE_SEMANTICS } from "../field-classifier";
 
 export interface FillOutcome {

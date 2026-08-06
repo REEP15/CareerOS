@@ -1,6 +1,6 @@
-import type { JobPosting } from "@/types/job";
-import type { MatchResult } from "@/types/match";
-import type { ResumeProfile } from "@/types/resume";
+import type { JobPosting } from "../types/job";
+import type { MatchResult } from "../types/match";
+import type { ResumeProfile } from "../types/resume";
 
 export type ResumeExtractionContext = {
   extractedText: string;

@@ -13,7 +13,7 @@ import { authFetch } from "@/lib/auth-fetch";
 import type { Mission } from "@/types/mission";
 
 type MissionResponse =
-  | { success: true; mission: Mission }
+  | { success: true; mission: Mission; error?: string }
   | { success: false; error: string };
 
 export function MissionDetailPanel({ mission }: { mission: Mission }) {
@@ -31,7 +31,7 @@ export function MissionDetailPanel({ mission }: { mission: Mission }) {
         const payload = (await response.json()) as MissionResponse;
 
         if (!response.ok || !payload.success) {
-          toast.error(payload.success ? "Action failed." : payload.error);
+          toast.error(payload.error || "Action failed.");
           return;
         }
 

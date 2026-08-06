@@ -1,10 +1,10 @@
-import { launchApplicationBrowser } from "@/services/apply/playwright";
-import { logApply } from "@/services/apply/logger";
-import { loadApplicationPackage, type ApplicationResult, upsertApplication } from "@/services/apply/tracker";
-import { ApplicationStatus } from "../../../../shared/types/application";
-import { createNotification } from "@/services/notifications/notifications";
-import { NotificationType } from "../../../../shared/types/notification";
-import type { BrowserPage } from "../../../../shared/types/browser";
+import { launchApplicationBrowser } from "./playwright";
+import { logApply } from "./logger";
+import { loadApplicationPackage, type ApplicationResult, upsertApplication } from "./tracker";
+import { ApplicationStatus } from "@/types/application";
+import { createNotification } from "../notifications/notifications";
+import { NotificationType } from "@/types/notification";
+import type { BrowserPage } from "@/types/browser";
 
 export async function startApplication(uid: string, jobId: string): Promise<ApplicationResult> {
   logApply("info", "Starting application", { jobId });

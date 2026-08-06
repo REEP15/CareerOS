@@ -1,10 +1,10 @@
 import { Builder, By, until, WebDriver } from "selenium-webdriver";
 import chrome from "selenium-webdriver/chrome";
 import path from "path";
-import type { CollectorJobInput } from "../../../../shared/types/collector";
-import { AutomationMode } from "../../../../shared/types/collector";
-import { normalizeJob } from "@/services/collector/normalize";
-import type { JobPosting } from "../../../../shared/types/job";
+import type { CollectorJobInput } from "@/types/collector";
+import { AutomationMode } from "@/types/collector";
+import { normalizeJob } from "../collector/normalize";
+import type { JobPosting } from "@/types/job";
 
 export class LinkedInSeleniumCollector {
   name = "LinkedIn";

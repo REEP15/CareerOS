@@ -4,7 +4,7 @@
  */
 
 import { doc, setDoc, collection, addDoc, query, where, orderBy, getDocs } from "firebase/firestore";
-import { getUserAutomationLogsCollection, isFirebaseConfigured } from "../../../../shared/lib/firebase";
+import { getUserAutomationLogsCollection, isFirebaseConfigured } from "@/lib/firebase";
 import type { LogLevel } from "./engine/context";
 
 export interface AutomationLogEntry {
@@ -53,10 +53,13 @@ export class AutomationLoggingService {
     );
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    } as AutomationLogEntry));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+      } as any;
+    });
   }
 
   /**
@@ -75,10 +78,13 @@ export class AutomationLoggingService {
     );
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    } as AutomationLogEntry));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+      } as any;
+    });
   }
 
   /**
@@ -107,10 +113,13 @@ export class AutomationLoggingService {
 
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    } as AutomationLogEntry));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+      } as any;
+    });
   }
 
   /**
@@ -130,10 +139,13 @@ export class AutomationLoggingService {
     );
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    } as AutomationLogEntry));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+      } as any;
+    });
   }
 
   /**

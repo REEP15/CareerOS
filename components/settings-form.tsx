@@ -16,7 +16,7 @@ import { authFetch } from "@/lib/auth-fetch";
 import type { AppSettings } from "@/types/settings";
 
 type SettingsResponse =
-  | { success: true; settings: AppSettings }
+  | { success: true; settings: AppSettings; error?: string }
   | { success: false; error: string };
 
 type ApiKeyCheckResponse =
@@ -28,7 +28,7 @@ type ApiKeyValidateResponse =
   | { success: false; error: string };
 
 type DeleteAccountResponse =
-  | { success: true }
+  | { success: true; error?: string }
   | { success: false; error: string };
 
 export function SettingsForm() {
@@ -160,7 +160,7 @@ export function SettingsForm() {
         const payload = (await response.json()) as SettingsResponse;
 
         if (!response.ok || !payload.success) {
-          toast.error(payload.success ? "Failed to save settings." : payload.error);
+          toast.error(payload.error || "Failed to save settings.");
           return;
         }
 
@@ -194,7 +194,7 @@ export function SettingsForm() {
       const payload = (await response.json()) as DeleteAccountResponse;
 
       if (!response.ok || !payload.success) {
-        toast.error(payload.success ? "Failed to delete account." : payload.error);
+        toast.error(payload.error || "Failed to delete account.");
         setIsDeleting(false);
         return;
       }

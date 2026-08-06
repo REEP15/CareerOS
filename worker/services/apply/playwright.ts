@@ -1,14 +1,14 @@
 import { existsSync } from "node:fs";
 
-import { logApply, withRetry } from "@/services/apply/logger";
-import { getKnownApplicationFields } from "@/services/apply/forms";
-import { getSubmitPauseMessage } from "@/services/apply/submit";
-import { publicUrlToFilePath, downloadFromUrl, cleanupTempFile } from "@/services/apply/upload";
-import type { ApplicationPackage } from "@/services/apply/tracker";
-import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
-import { getSettings } from "@/services/settings/settings";
-import { escapeRegExp } from "../../../../shared/lib/utils";
-import type { BrowserPage, BrowserElement, BoundingBox } from "../../../../shared/types/browser";
+import { logApply, withRetry } from "./logger";
+import { getKnownApplicationFields } from "./forms";
+import { getSubmitPauseMessage } from "./submit";
+import { publicUrlToFilePath, downloadFromUrl, cleanupTempFile } from "./upload";
+import type { ApplicationPackage } from "./tracker";
+import { loadPrimaryResumeProfile } from "../matcher/matcher";
+import { getSettings } from "../settings/settings";
+import { escapeRegExp } from "@/lib/utils";
+import type { BrowserPage, BrowserElement, BoundingBox } from "@/types/browser";
 import { wrapPlaywrightPage, loadPlaywright, type Page as PlaywrightPage } from "./browser-adapter";
 
 const DEFAULT_TIMEOUT_MS = 60_000;

@@ -3,8 +3,8 @@
  * Mirrors v0_phase3/engine/core-engine.ts with CareerOS integration
  */
 
-import type { BrowserPage } from "../../../../shared/types/browser";
-import type { AutomationResult, RunState } from "../../../../shared/types/automation";
+import type { BrowserPage } from "@/types/browser";
+import type { AutomationResult, RunState } from "@/types/automation";
 import type { SiteAdapter } from "../adapters/base";
 import { AdapterRegistry } from "../adapters/base";
 import type { AutomationRunContext, EngineHooks, ExecutionPhase } from "./context";

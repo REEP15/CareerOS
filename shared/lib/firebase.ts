@@ -3,16 +3,16 @@ import { getAuth as firebaseGetAuth, type Auth } from "firebase/auth";
 import { collection, doc, getDoc, getFirestore, type CollectionReference, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
-import type { Application } from "@/types/application";
-import type { ApiKeyStorage } from "@/types/api-keys";
-import type { CoverLetter } from "@/types/coverLetter";
-import type { JobPosting } from "@/types/job";
-import type { MatchResult } from "@/types/match";
-import type { Mission } from "@/types/mission";
-import type { Notification } from "@/types/notification";
-import type { ResumeProfile } from "@/types/resume";
-import type { AppSettings } from "@/types/settings";
-import type { TailoredResume } from "@/types/tailoredResume";
+import type { Application } from "../types/application";
+import type { ApiKeyStorage } from "../types/api-keys";
+import type { CoverLetter } from "../types/coverLetter";
+import type { JobPosting } from "../types/job";
+import type { MatchResult } from "../types/match";
+import type { Mission } from "../types/mission";
+import type { Notification } from "../types/notification";
+import type { ResumeProfile } from "../types/resume";
+import type { AppSettings } from "../types/settings";
+import type { TailoredResume } from "../types/tailoredResume";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

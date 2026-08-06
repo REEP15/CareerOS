@@ -4,8 +4,8 @@
  */
 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { getFileStorage } from "../../../../shared/lib/firebase";
-import type { BrowserPage } from "../../../../shared/types/browser";
+import { getFileStorage } from "@/lib/firebase";
+import type { BrowserPage } from "@/types/browser";
 
 export async function captureAndUploadScreenshot(
   page: BrowserPage,

@@ -13,7 +13,7 @@ import { authFetch } from "@/lib/auth-fetch";
 import type { ResumeProfile } from "@/types/resume";
 
 type ResumeResponse =
-  | { success: true; profile: ResumeProfile }
+  | { success: true; profile: ResumeProfile; error?: string }
   | { success: false; error: string };
 
 export default function ResumePage() {

@@ -43,9 +43,9 @@ appWorker.post('/collect', async (req, res) => {
     }
 
     // Import collector services from worker directory
-    const { collectors } = await import('./services/collector/registry.js');
-    const { saveCollectedJobs } = await import('./services/collector/save.js');
-    const { dedupeJobs } = await import('./services/collector/normalize.js');
+    const { collectors } = await import('./services/collector/registry.ts');
+    const { saveCollectedJobs } = await import('./services/collector/save.ts');
+    const { dedupeJobs } = await import('./services/collector/normalize.ts');
 
     const collectedGroups = await Promise.all(collectors.map((collector) => collector.collect()));
     let mergedJobs = collectedGroups.flat();
@@ -111,10 +111,35 @@ appWorker.post('/apply', async (req, res) => {
       return res.status(400).json({ success: false, error: 'User ID and Job ID required' });
     }
 
-    // Import automation services from worker directory
-    const { startAutomation } = await import('./services/apply/automation-service.js');
+    // Import automation service from worker directory
+    const { AutomationService } = await import('./services/apply/automation-service.ts');
 
-    const result = await startAutomation(uid, jobId);
+    const service = new AutomationService(
+      {
+        userId: uid,
+        jobId,
+        runId: `run_${Date.now()}`,
+        requestUserConfirmation: async () => {
+          throw new Error('Confirmation path is not configured in worker.');
+        },
+        isAborted: () => false,
+        getResumeProfile: async () => {
+          throw new Error('Resume profile loader is not configured in worker.');
+        },
+        generateResumePDF: async () => {
+          throw new Error('Resume PDF generator is not configured in worker.');
+        },
+        generateCoverLetterPDF: async () => {
+          throw new Error('Cover letter PDF generator is not configured in worker.');
+        },
+      },
+      {
+        userId: uid,
+        jobId,
+      },
+    );
+
+    const result = await service.run();
 
     res.json({
       success: true,
@@ -133,11 +158,14 @@ appWorker.post('/apply', async (req, res) => {
 appWorker.get('/status/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Import automation services from worker directory
-    const { getAutomationStatus } = await import('./services/apply/automation-service.js');
+    const uid = String(req.query.uid || '');
 
-    const status = await getAutomationStatus(id);
+    if (!uid) {
+      return res.status(400).json({ success: false, error: 'User ID required as uid query parameter' });
+    }
+
+    const service = await createAutomationService(uid, 'unknown', id);
+    const status = await service.getStatus(id);
 
     res.json({
       success: true,
@@ -152,19 +180,54 @@ appWorker.get('/status/:id', async (req, res) => {
   }
 });
 
+// POST /confirm - Placeholder confirmation endpoint
+appWorker.post('/confirm', async (req, res) => {
+  res.status(501).json({
+    success: false,
+    error: 'Confirmation endpoint is not implemented in the worker service yet.',
+  });
+});
+
+const createAutomationService = async (uid, jobId, runId) => {
+  const { AutomationService } = await import('./services/apply/automation-service.ts');
+
+  return new AutomationService(
+    {
+      userId: uid,
+      jobId,
+      runId,
+      requestUserConfirmation: async () => {
+        throw new Error('Confirmation path is not configured in worker.');
+      },
+      isAborted: () => false,
+      getResumeProfile: async () => {
+        throw new Error('Resume profile loader is not configured in worker.');
+      },
+      generateResumePDF: async () => {
+        throw new Error('Resume PDF generator is not configured in worker.');
+      },
+      generateCoverLetterPDF: async () => {
+        throw new Error('Resume cover letter PDF generator is not configured in worker.');
+      },
+    },
+    {
+      userId: uid,
+      jobId,
+    },
+  );
+};
+
 // POST /pause - Pause automation
 appWorker.post('/pause', async (req, res) => {
   try {
     const { uid, jobId, runId } = req.body;
     
-    if (!uid || !jobId) {
-      return res.status(400).json({ success: false, error: 'User ID and Job ID required' });
+    if (!uid || !jobId || !runId) {
+      return res.status(400).json({ success: false, error: 'User ID, Job ID, and runId are required' });
     }
 
-    // Import automation services from worker directory
-    const { pauseAutomation } = await import('./services/apply/automation-service.js');
-
-    const result = await pauseAutomation(uid, jobId, runId);
+    const service = await createAutomationService(uid, jobId, runId);
+    const result = await service.pause('user_requested');
 
     res.json({
       success: true,
@@ -188,10 +251,8 @@ appWorker.post('/resume', async (req, res) => {
       return res.status(400).json({ success: false, error: 'User ID and Job ID required' });
     }
 
-    // Import automation services from worker directory
-    const { resumeAutomation } = await import('./services/apply/automation-service.js');
-
-    const result = await resumeAutomation(uid, jobId, runId);
+    const service = await createAutomationService(uid, jobId, runId || `run_${Date.now()}`);
+    const result = await service.resume(runId || '');
 
     res.json({
       success: true,
@@ -215,10 +276,8 @@ appWorker.post('/cancel', async (req, res) => {
       return res.status(400).json({ success: false, error: 'User ID and Job ID required' });
     }
 
-    // Import automation services from worker directory
-    const { cancelAutomation } = await import('./services/apply/automation-service.js');
-
-    const result = await cancelAutomation(uid, jobId, runId);
+    const service = await createAutomationService(uid, jobId, runId || `run_${Date.now()}`);
+    const result = await service.cancel();
 
     res.json({
       success: true,

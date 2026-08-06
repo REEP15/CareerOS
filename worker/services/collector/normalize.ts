@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
-import type { CollectorJobInput } from "../../../../shared/types/collector";
-import type { JobPosting } from "../../../../shared/types/job";
+import type { CollectorJobInput } from "@/types/collector";
+import type { JobPosting } from "@/types/job";
 
 export function normalizeJob(input: CollectorJobInput, source: string): JobPosting {
   const title = normalizeText(input.title);

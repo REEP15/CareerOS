@@ -1,5 +1,5 @@
-import { BaseCollector } from "@/services/collector/base";
-import { AutomationMode } from "../../../../shared/types/collector";
+import { BaseCollector } from "../collector/base";
+import { AutomationMode } from "@/types/collector";
 import { LinkedInSeleniumCollector } from "./linkedin-selenium";
 
 export class LinkedInCollector extends BaseCollector {

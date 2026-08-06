@@ -3,10 +3,10 @@
  * Bridges between orchestration engine and existing CareerOS infrastructure
  */
 
-import type { ConfirmationRequest, ConfirmationResponse, DetectedField, ResolvedAnswer } from "../../../../shared/types/automation";
+import type { ConfirmationRequest, ConfirmationResponse, DetectedField, ResolvedAnswer } from "@/types/automation";
 import type { EngineHooks, LogLevel } from "./context";
 import { upsertApplication } from "../tracker";
-import { ApplicationStatus } from "../../../../shared/types/application";
+import { ApplicationStatus } from "@/types/application";
 import { captureAndUploadScreenshot } from "../screenshot-service";
 import { automationLoggingService } from "../logging-service";
 

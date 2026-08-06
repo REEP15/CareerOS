@@ -3,8 +3,8 @@
  * Mirrors v0_phase3/adapters/base-adapter.ts and adapter-registry.ts
  */
 
-import type { BrowserPage, BrowserElement } from "../../../../shared/types/browser";
-import type { FieldSemantic } from "../../../../shared/types/automation";
+import type { BrowserPage, BrowserElement } from "@/types/browser";
+import type { FieldSemantic } from "@/types/automation";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 
 export interface AdapterFieldHint {

@@ -3,7 +3,7 @@
  * Mirrors v0_phase3/browser/playwright-driver.ts for clean browser isolation
  */
 
-import type { BrowserPage, BrowserElement, BoundingBox } from "../../../../shared/types/browser";
+import type { BrowserPage, BrowserElement, BoundingBox } from "@/types/browser";
 
 type PlaywrightModule = {
   chromium: {

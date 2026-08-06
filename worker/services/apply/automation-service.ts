@@ -3,16 +3,20 @@
  * Main entry point for Phase 3 automation
  */
 
-import type { BrowserPage } from "../../../../shared/types/browser";
-import type { AutomationResult } from "../../../../shared/types/automation";
+import type { BrowserPage } from "@/types/browser";
+import type { AutomationResult } from "@/types/automation";
 import { CoreAutomationEngine } from "./engine/core-engine";
 import { buildRegistry } from "./adapters";
 import { createEngineHooks, type HooksDependencies } from "./engine/hooks";
 import type { AutomationRunContext } from "./engine/context";
 import { loadApplicationPackage } from "./tracker";
+ // TODO: Move to worker if needed
 import { mapResumeProfileToUserProfile, type ResolverInputs, type UserProfile } from "./answer-resolver";
-import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
-import { generateResumePDF, generateCoverLetterPDF } from "@/services/files/pdf-generator";
+ // TODO: Move to worker if needed
+import { loadPrimaryResumeProfile } from "../matcher/matcher";
+ // TODO: Move to worker if needed
+import { generateResumePDF, generateCoverLetterPDF } from "../files/pdf-generator";
+ // TODO: Move to worker if needed
 import { wrapPlaywrightPage, loadPlaywright, type Page as PlaywrightPage } from "./browser-adapter";
 import { statePersistenceService, type AutomationRunState } from "./state-persistence";
 import { captureAndUploadScreenshot } from "./screenshot-service";
@@ -50,6 +54,7 @@ export class AutomationService {
   constructor(deps: AutomationServiceDeps, options: AutomationServiceOptions) {
     this.deps = deps;
     this.options = options;
+    this.currentRunId = deps.runId ?? null;
   }
 
   /**

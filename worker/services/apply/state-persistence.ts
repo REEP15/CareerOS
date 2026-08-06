@@ -4,8 +4,8 @@
  */
 
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where } from "firebase/firestore";
-import { getUserAutomationStateCollection, isFirebaseConfigured } from "../../../../shared/lib/firebase";
-import type { RunState } from "../../../../shared/types/automation";
+import { getUserAutomationStateCollection, isFirebaseConfigured } from "@/lib/firebase";
+import type { RunState } from "@/types/automation";
 
 export type ExecutionPhase = 
   | "detecting"
