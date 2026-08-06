@@ -91,8 +91,8 @@ export async function makeChatGPTRequest(uid: string, messages: Array<{ role: st
     throw new Error(`ChatGPT API error: ${response.statusText}`);
   }
 
-  const data = await response.json();
-  return data.choices[0]?.message?.content || "";
+  const data: any = await response.json();
+  return data.choices?.[0]?.message?.content || "";
 }
 
 export async function makeGeminiRequest(uid: string, prompt: string): Promise<string> {
@@ -129,8 +129,8 @@ export async function makeGeminiRequest(uid: string, prompt: string): Promise<st
     throw new Error(`Gemini API error: ${response.statusText} - ${errorText}`);
   }
 
-  const data = await response.json();
-  return data.candidates[0]?.content?.parts[0]?.text || "";
+  const data: any = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
 
 export async function makeDeepSeekRequest(uid: string, messages: Array<{ role: string; content: string }>): Promise<string> {
@@ -156,6 +156,6 @@ export async function makeDeepSeekRequest(uid: string, messages: Array<{ role: s
     throw new Error(`DeepSeek API error: ${response.statusText}`);
   }
 
-  const data = await response.json();
-  return data.choices[0]?.message?.content || "";
+  const data: any = await response.json();
+  return data.choices?.[0]?.message?.content || "";
 }

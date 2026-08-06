@@ -56,7 +56,7 @@ export class WellfoundCollector extends BaseCollector {
               
               // Company is often in a parent element or nearby
               const parent = await link.evaluateHandle((el: any) => el.parentElement);
-              const parentText = await parent.evaluate((el: HTMLElement) => el.textContent || '');
+              const parentText = await parent.evaluate((el: any) => el.textContent || '');
               await parent.dispose();
               
               // Try to extract company name from the parent text
@@ -120,7 +120,7 @@ export class WellfoundCollector extends BaseCollector {
     try {
       // Try to find the field in nearby elements
       const parent = await link.evaluateHandle((el: any) => el.parentElement);
-      const fieldElement = await parent.evaluate((el: HTMLElement, field: string) => {
+      const fieldElement = await parent.evaluate((el: any, field: string) => {
         const text = el.textContent || '';
         const regex = new RegExp(field, 'i');
         const match = text.match(regex);

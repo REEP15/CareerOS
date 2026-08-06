@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "Browser automation worker for CareerOS",
   "main": "index.js",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
-    "start": "node index.js",
-    "dev": "tsx watch index.js"
+    "build": "tsc -p tsconfig.json && node --input-type=commonjs ./scripts/fix-dist-structure.cjs",
+    "start": "node dist/index.js",
+    "dev": "tsx watch index.ts"
   },
   "dependencies": {
     "dotenv": "^16.3.1",

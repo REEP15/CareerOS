@@ -1,15 +1,14 @@
 import express from 'express';
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { join } from 'path';
 import { config } from 'dotenv';
 
 // Load environment variables
 config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Use process.cwd() as a stable base for resolving relative paths in worker
+const WORKER_DIR = process.cwd();
 
 // Firebase configuration (same as Next.js)
 const firebaseConfig = {
@@ -36,43 +35,43 @@ appWorker.get('/health', (req, res) => {
 // POST /collect - Execute job collection
 appWorker.post('/collect', async (req, res) => {
   try {
-    const { uid, missionFilter } = req.body;
-    
+    const { uid, missionFilter } = req.body as any;
+
     if (!uid) {
       return res.status(400).json({ success: false, error: 'User ID required' });
     }
 
-    // Import collector services from worker directory
-    const { collectors } = await import('./services/collector/registry.ts');
-    const { saveCollectedJobs } = await import('./services/collector/save.ts');
-    const { dedupeJobs } = await import('./services/collector/normalize.ts');
+    // Import collector services from worker directory (no .ts extension)
+    const { collectors } = await import('./services/collector/registry');
+    const { saveCollectedJobs } = await import('./services/collector/save');
+    const { dedupeJobs } = await import('./services/collector/normalize');
 
-    const collectedGroups = await Promise.all(collectors.map((collector) => collector.collect()));
+    const collectedGroups = await Promise.all(collectors.map((collector: any) => collector.collect()));
     let mergedJobs = collectedGroups.flat();
 
     // Apply mission filtering if provided by Next.js
     if (missionFilter && missionFilter.activeMissions && missionFilter.activeMissions.length > 0) {
-      mergedJobs = mergedJobs.filter((job) =>
-        missionFilter.activeMissions.some((mission) => {
-          if (mission.sources.length > 0 && !mission.sources.some((s) => s.toLowerCase() === job.source.toLowerCase())) {
+      mergedJobs = mergedJobs.filter((job: any) =>
+        missionFilter.activeMissions.some((mission: any) => {
+          if (mission.sources.length > 0 && !mission.sources.some((s: string) => s.toLowerCase() === job.source.toLowerCase())) {
             return false;
           }
 
           const text = `${job.title} ${job.description}`.toLowerCase();
 
-          if (mission.keywords.length > 0 && !mission.keywords.some((k) => text.includes(k.toLowerCase()))) {
+          if (mission.keywords.length > 0 && !mission.keywords.some((k: string) => text.includes(k.toLowerCase()))) {
             return false;
           }
 
-          if (mission.excludedKeywords.some((k) => text.includes(k.toLowerCase()))) {
+          if (mission.excludedKeywords.some((k: string) => text.includes(k.toLowerCase()))) {
             return false;
           }
 
           if (mission.locations.length > 0) {
             const jobLocation = job.location.toLowerCase();
-            const locationMatch = mission.locations.some((loc) => jobLocation.includes(loc.toLowerCase()));
+            const locationMatch = mission.locations.some((loc: string) => jobLocation.includes(loc.toLowerCase()));
 
-            if (!locationMatch && !(mission.remote && jobLocation.includes("remote"))) {
+            if (!locationMatch && !(mission.remote && jobLocation.includes('remote'))) {
               return false;
             }
           }
@@ -93,7 +92,7 @@ appWorker.post('/collect', async (req, res) => {
       duplicates: result.skipped + (mergedJobs.length - uniqueJobs.length),
       missionFiltered: missionFilter && missionFilter.activeMissions.length > 0,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Collection error:', error);
     res.status(500).json({
       success: false,
@@ -105,14 +104,14 @@ appWorker.post('/collect', async (req, res) => {
 // POST /apply - Execute application automation
 appWorker.post('/apply', async (req, res) => {
   try {
-    const { uid, jobId } = req.body;
-    
+    const { uid, jobId } = req.body as any;
+
     if (!uid || !jobId) {
       return res.status(400).json({ success: false, error: 'User ID and Job ID required' });
     }
 
     // Import automation service from worker directory
-    const { AutomationService } = await import('./services/apply/automation-service.ts');
+    const { AutomationService } = await import('./services/apply/automation-service');
 
     const service = new AutomationService(
       {
@@ -130,7 +129,7 @@ appWorker.post('/apply', async (req, res) => {
           throw new Error('Resume PDF generator is not configured in worker.');
         },
         generateCoverLetterPDF: async () => {
-          throw new Error('Cover letter PDF generator is not configured in worker.');
+          throw new Error('Resume cover letter PDF generator is not configured in worker.');
         },
       },
       {
@@ -145,7 +144,7 @@ appWorker.post('/apply', async (req, res) => {
       success: true,
       result,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Automation error:', error);
     res.status(500).json({
       success: false,
@@ -157,8 +156,8 @@ appWorker.post('/apply', async (req, res) => {
 // GET /status/:id - Get automation status
 appWorker.get('/status/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const uid = String(req.query.uid || '');
+    const { id } = req.params as any;
+    const uid = String((req.query as any).uid || '');
 
     if (!uid) {
       return res.status(400).json({ success: false, error: 'User ID required as uid query parameter' });
@@ -171,7 +170,7 @@ appWorker.get('/status/:id', async (req, res) => {
       success: true,
       status,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Status error:', error);
     res.status(500).json({
       success: false,
@@ -188,8 +187,8 @@ appWorker.post('/confirm', async (req, res) => {
   });
 });
 
-const createAutomationService = async (uid, jobId, runId) => {
-  const { AutomationService } = await import('./services/apply/automation-service.ts');
+const createAutomationService = async (uid: string, jobId: string, runId: string) => {
+  const { AutomationService } = await import('./services/apply/automation-service');
 
   return new AutomationService(
     {
@@ -220,8 +219,8 @@ const createAutomationService = async (uid, jobId, runId) => {
 // POST /pause - Pause automation
 appWorker.post('/pause', async (req, res) => {
   try {
-    const { uid, jobId, runId } = req.body;
-    
+    const { uid, jobId, runId } = req.body as any;
+
     if (!uid || !jobId || !runId) {
       return res.status(400).json({ success: false, error: 'User ID, Job ID, and runId are required' });
     }
@@ -233,7 +232,7 @@ appWorker.post('/pause', async (req, res) => {
       success: true,
       result,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Pause error:', error);
     res.status(500).json({
       success: false,
@@ -245,8 +244,8 @@ appWorker.post('/pause', async (req, res) => {
 // POST /resume - Resume automation
 appWorker.post('/resume', async (req, res) => {
   try {
-    const { uid, jobId, runId } = req.body;
-    
+    const { uid, jobId, runId } = req.body as any;
+
     if (!uid || !jobId) {
       return res.status(400).json({ success: false, error: 'User ID and Job ID required' });
     }
@@ -258,7 +257,7 @@ appWorker.post('/resume', async (req, res) => {
       success: true,
       result,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Resume error:', error);
     res.status(500).json({
       success: false,
@@ -270,8 +269,8 @@ appWorker.post('/resume', async (req, res) => {
 // POST /cancel - Cancel automation
 appWorker.post('/cancel', async (req, res) => {
   try {
-    const { uid, jobId, runId } = req.body;
-    
+    const { uid, jobId, runId } = req.body as any;
+
     if (!uid || !jobId) {
       return res.status(400).json({ success: false, error: 'User ID and Job ID required' });
     }
@@ -283,7 +282,7 @@ appWorker.post('/cancel', async (req, res) => {
       success: true,
       result,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Cancel error:', error);
     res.status(500).json({
       success: false,

@@ -59,7 +59,9 @@ export abstract class BaseCollector implements JobCollector {
    */
   protected async scrollPage(page: Page, maxScrolls = 5): Promise<void> {
     for (let i = 0; i < maxScrolls; i++) {
-      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.evaluate(() => {
+        (globalThis as any).scrollTo(0, (globalThis as any).document.body.scrollHeight);
+      });
       await page.waitForTimeout(1000); // Wait for content to load
     }
   }

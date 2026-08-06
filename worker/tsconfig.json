@@ -1,16 +1,17 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
+    "target": "ES2019",
+    "lib": ["ES2019"],
+    "allowJs": false,
     "skipLibCheck": true,
     "strict": false,
-    "noEmit": true,
+    "noEmit": false,
+    "declaration": false,
     "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
-    "isolatedModules": true,
+    "isolatedModules": false,
     "jsx": "react-jsx",
     "noImplicitAny": false,
     "baseUrl": "..",
@@ -20,6 +21,9 @@
       "@/services/*": ["services/*"],
       "@services/*": ["services/*"]
     }
+    ,
+    "outDir": "dist",
+    "rootDir": ".."
   },
   "include": [
     "**/*.ts",
