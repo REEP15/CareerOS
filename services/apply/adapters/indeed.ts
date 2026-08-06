@@ -7,10 +7,12 @@ import type { BrowserPage } from "@/types/browser";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import { BaseAdapter } from "./base-adapter";
 import type { AdapterFieldHint } from "./base";
+import { AutomationMode } from "@/types/collector";
 
 export class IndeedAdapter extends BaseAdapter {
   readonly id = "indeed";
   readonly displayName = "Indeed";
+  readonly mode = AutomationMode.FULL_AUTOMATION;
   protected readonly hostPatterns = ["indeed.com", "smartapply.indeed.com"];
   protected readonly domSignatures = [
     "#indeedApplyButton",

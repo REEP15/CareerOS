@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { verifyAuthToken } from "@/lib/server-auth";
 import { getDb } from "@/lib/firebase";
+import { createApplicationPackageService } from "@/services/tailoring/package";
 import type { ResumeProfile } from "@/types/resume";
 
 export async function POST(request: Request) {
@@ -52,40 +53,27 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const jobId = searchParams.get("jobId");
-
-    if (!jobId) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "Job ID is required" 
-      }, { status: 400 });
-    }
-
-    // Get tailored resume
-    const tailoredRef = doc(getDb(), `users/${authResult.uid}/tailored-resumes/${jobId}`);
-    const snapshot = await getDoc(tailoredRef);
-
-    if (!snapshot.exists()) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "Tailored resume not found" 
-      }, { status: 404 });
-    }
-
-    const data = snapshot.data() as { jobId: string; content: ResumeProfile; generatedAt: string };
+    // Get all application packages and extract tailored resumes
+    const packageService = createApplicationPackageService();
+    const packages = await packageService.listApplicationPackages(authResult.uid);
+    
+    const resumes = packages.map((pkg: any) => ({
+      jobId: pkg.id,
+      pdfUrl: undefined, // PDF generation not implemented yet
+      profile: pkg.tailoredResume.content,
+      generatedAt: pkg.tailoredResume.generatedAt,
+    }));
 
     return NextResponse.json({ 
       success: true, 
-      tailoredResume: data.content,
-      generatedAt: data.generatedAt 
+      resumes 
     });
 
   } catch (error) {
-    console.error("Tailored resume retrieval error:", error);
+    console.error("Tailored resumes retrieval error:", error);
     return NextResponse.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : "Failed to retrieve tailored resume" 
+      error: error instanceof Error ? error.message : "Failed to retrieve tailored resumes" 
     }, { status: 500 });
   }
 }

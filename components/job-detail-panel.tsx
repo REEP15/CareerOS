@@ -376,7 +376,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
                   <div>
                     <p className="mb-2 text-sm font-medium">Strengths</p>
                     <div className="flex flex-wrap gap-2">
-                      {match.strengths.map((strength) => (
+                      {match?.strengths?.map((strength) => (
                         <Badge key={strength} variant="success">
                           {strength}
                         </Badge>
@@ -386,7 +386,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
                   <div>
                     <p className="mb-2 text-sm font-medium">Weaknesses</p>
                     <div className="flex flex-wrap gap-2">
-                      {match.weaknesses.map((weakness) => (
+                      {match?.weaknesses?.map((weakness) => (
                         <Badge key={weakness} variant="destructive">
                           {weakness}
                         </Badge>
@@ -394,7 +394,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
                     </div>
                   </div>
                 </div>
-                {match.missingSkills.length > 0 ? (
+                {match?.missingSkills && match.missingSkills.length > 0 ? (
                   <div>
                     <p className="mb-2 text-sm font-medium">Missing Skills</p>
                     <div className="flex flex-wrap gap-2">
@@ -406,7 +406,9 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
                     </div>
                   </div>
                 ) : null}
-                <p className="text-sm text-muted-foreground">{match.reasoning}</p>
+                {match?.reasoning ? (
+                  <p className="text-sm text-muted-foreground">{match.reasoning}</p>
+                ) : null}
               </CardContent>
             </Card>
           ) : null}

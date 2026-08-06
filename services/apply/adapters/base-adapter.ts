@@ -7,10 +7,12 @@ import type { BrowserElement, BrowserPage } from "@/types/browser";
 import type { FieldSemantic } from "@/types/automation";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import type { AdapterFieldHint, SiteAdapter } from "./base";
+import { AutomationMode } from "@/types/collector";
 
 export abstract class BaseAdapter implements SiteAdapter {
   abstract readonly id: string;
   abstract readonly displayName: string;
+  abstract readonly mode: AutomationMode;
 
   /** Hostname fragments that indicate this platform, e.g. ["naukri.com"]. */
   protected abstract readonly hostPatterns: string[];

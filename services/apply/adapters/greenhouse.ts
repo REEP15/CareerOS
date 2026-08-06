@@ -7,10 +7,12 @@ import type { BrowserPage } from "@/types/browser";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import { BaseAdapter } from "./base-adapter";
 import type { AdapterFieldHint } from "./base";
+import { AutomationMode } from "@/types/collector";
 
 export class GreenhouseAdapter extends BaseAdapter {
   readonly id = "greenhouse";
   readonly displayName = "Greenhouse";
+  readonly mode = AutomationMode.FULL_AUTOMATION;
   protected readonly hostPatterns = ["greenhouse.io", "boards.greenhouse.io"];
   protected readonly domSignatures = [
     "[data-test='application-form']",

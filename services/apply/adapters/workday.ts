@@ -7,10 +7,12 @@ import type { BrowserPage } from "@/types/browser";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import { BaseAdapter } from "./base-adapter";
 import type { AdapterFieldHint } from "./base";
+import { AutomationMode } from "@/types/collector";
 
 export class WorkdayAdapter extends BaseAdapter {
   readonly id = "workday";
   readonly displayName = "Workday";
+  readonly mode = AutomationMode.FULL_AUTOMATION;
   protected readonly hostPatterns = ["workday.com", "myworkdayjobs.com"];
   protected readonly domSignatures = [
     "[data-automation-id='applicationForm']",

@@ -7,10 +7,12 @@ import type { BrowserPage } from "@/types/browser";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import { BaseAdapter } from "./base-adapter";
 import type { AdapterFieldHint } from "./base";
+import { AutomationMode } from "@/types/collector";
 
 export class LeverAdapter extends BaseAdapter {
   readonly id = "lever";
   readonly displayName = "Lever";
+  readonly mode = AutomationMode.FULL_AUTOMATION;
   protected readonly hostPatterns = ["lever.co", "jobs.lever.co"];
   protected readonly domSignatures = [
     "[data-qa='apply-form']",

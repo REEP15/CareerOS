@@ -12,7 +12,12 @@ type JobWithApplicationPackage = JobPosting & {
   application: import("@/types/application").Application | null;
   coverLetter: import("@/types/coverLetter").CoverLetter | null;
   match: import("@/types/match").MatchResult | null;
-  tailoredResume: import("@/types/tailoredResume").TailoredResume | null;
+  tailoredResume: {
+    jobId: string;
+    pdfUrl?: string;
+    profile: any;
+    generatedAt: string;
+  } | null;
 };
 
 export default function JobsPage() {
@@ -32,12 +37,12 @@ export default function JobsPage() {
       ]).then(([jobsRes, matchesRes, resumesRes, coverLettersRes, applicationsRes]) => {
         const jobs = jobsRes.success ? jobsRes.jobs : [];
         const matches = matchesRes.success ? matchesRes.matches : [];
-        const tailoredResumes = resumesRes.success ? resumesRes.resumes : [];
+        const resumes = resumesRes.success ? resumesRes.resumes : [];
         const coverLetters = coverLettersRes.success ? coverLettersRes.coverLetters : [];
         const applications = applicationsRes.success ? applicationsRes.applications : [];
         
         const matchesByJobId = new Map(matches.map((match: any) => [match.jobId, match]));
-        const tailoredResumesByJobId = new Map(tailoredResumes.map((resume: any) => [resume.jobId, resume]));
+        const resumesByJobId = new Map(resumes.map((resume: any) => [resume.jobId, resume]));
         const coverLettersByJobId = new Map(coverLetters.map((coverLetter: any) => [coverLetter.jobId, coverLetter]));
         const applicationsByJobId = new Map(applications.map((application: any) => [application.jobId, application]));
         
@@ -47,7 +52,7 @@ export default function JobsPage() {
             application: applicationsByJobId.get(job.id) ?? null,
             coverLetter: coverLettersByJobId.get(job.id) ?? null,
             match: matchesByJobId.get(job.id) ?? null,
-            tailoredResume: tailoredResumesByJobId.get(job.id) ?? null,
+            tailoredResume: resumesByJobId.get(job.id) ?? null,
           }))
           .sort((left: any, right: any) => {
             const leftScore = left.match?.overallScore ?? -1;

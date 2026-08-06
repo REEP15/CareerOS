@@ -7,10 +7,12 @@ import type { BrowserPage } from "@/types/browser";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import { BaseAdapter } from "./base-adapter";
 import type { AdapterFieldHint } from "./base";
+import { AutomationMode } from "@/types/collector";
 
 export class WellfoundAdapter extends BaseAdapter {
   readonly id = "wellfound";
   readonly displayName = "Wellfound";
+  readonly mode = AutomationMode.FULL_AUTOMATION;
   protected readonly hostPatterns = ["wellfound.com", "angel.co"];
   protected readonly domSignatures = [
     "[data-test='apply-form']",

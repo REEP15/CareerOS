@@ -19,7 +19,6 @@ import { APPLICATION_STATUS_LABELS, ApplicationStatus, type Application } from "
 import type { CoverLetter } from "@/types/coverLetter";
 import type { JobPosting } from "@/types/job";
 import type { MatchResult } from "@/types/match";
-import type { TailoredResume } from "@/types/tailoredResume";
 
 type CollectJobsResponse =
   | {
@@ -55,7 +54,12 @@ type JobWithApplicationPackage = JobPosting & {
   application: Application | null;
   coverLetter: CoverLetter | null;
   match: MatchResult | null;
-  tailoredResume: TailoredResume | null;
+  tailoredResume: {
+    jobId: string;
+    pdfUrl?: string;
+    profile: any;
+    generatedAt: string;
+  } | null;
 };
 
 type SortField = "score" | "company" | "title" | "location" | "newest" | "salary";
@@ -63,7 +67,6 @@ type SortField = "score" | "company" | "title" | "location" | "newest" | "salary
 export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [selectedDiff, setSelectedDiff] = useState<TailoredResume | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [recommendedFilter, setRecommendedFilter] = useState("all");
@@ -205,7 +208,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
     startTransition(async () => {
       try {
         const response = await authFetch(endpoint, {
-          method: "POST",
+          method: endpoint.includes("/applications") ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ jobId }),
         });
@@ -223,6 +226,66 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
       }
     });
   };
+
+  const handleGenerateResume = (job: JobWithApplicationPackage) => {
+    startTransition(async () => {
+      try {
+        const response = await authFetch("/api/resume/tailor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jobId: job.id,
+            jobTitle: job.title,
+            jobCompany: job.company,
+            jobDescription: job.description,
+            jobLocation: job.location,
+            jobSalary: job.salary,
+            jobUrl: job.applyUrl,
+          }),
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.success) {
+          toast.error(payload.error ?? "Failed to generate tailored resume.");
+          return;
+        }
+
+        toast.success("Tailored resume generated.");
+        router.refresh();
+      } catch {
+        toast.error("An unexpected error occurred.");
+      }
+    });
+  };
+
+  const handleGenerateCoverLetter = (job: JobWithApplicationPackage) => {
+    startTransition(async () => {
+      try {
+        const response = await authFetch("/api/cover-letter/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jobId: job.id,
+            jobTitle: job.title,
+            jobCompany: job.company,
+            jobDescription: job.description,
+          }),
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.success) {
+          toast.error(payload.error ?? "Failed to generate cover letter.");
+          return;
+        }
+
+        toast.success("Cover letter generated.");
+        router.refresh();
+      } catch {
+        toast.error("An unexpected error occurred.");
+      }
+    });
+  };
+
 
   return (
     <div className="space-y-6">
@@ -370,7 +433,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                         )}
                       </TableCell>
                       <TableCell className="max-w-52">
-                        {job.match && job.match.missingSkills.length > 0 ? (
+                        {job.match && job.match.missingSkills && job.match.missingSkills.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {job.match.missingSkills.slice(0, 3).map((skill) => (
                               <Badge key={skill} variant="outline">
@@ -400,9 +463,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() =>
-                              handleJobAction("/api/resume/tailor", job.id, `Resume generated for ${job.title}.`)
-                            }
+                            onClick={() => handleGenerateResume(job)}
                             disabled={isPending || !job.match}
                           >
                             <FileText className="h-4 w-4" />
@@ -410,13 +471,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() =>
-                              handleJobAction(
-                                "/api/cover-letter/generate",
-                                job.id,
-                                `Cover letter generated for ${job.title}.`,
-                              )
-                            }
+                            onClick={() => handleGenerateCoverLetter(job)}
                             disabled={isPending || !job.match}
                           >
                             <Mail className="h-4 w-4" />
@@ -424,8 +479,8 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => setSelectedDiff(job.tailoredResume)}
-                            disabled={!job.tailoredResume}
+                            onClick={() => window.open(job.applyUrl, '_blank')}
+                            disabled={!job.applyUrl}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -461,37 +516,6 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
           )}
         </CardContent>
       </Card>
-
-      {selectedDiff ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Resume Diff Preview</CardTitle>
-            <CardDescription>
-              {selectedDiff.profile.personal.name} · {selectedDiff.versionLabel}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-3">
-              <p className="text-sm font-medium">Summary</p>
-              <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm">
-                <p className="font-medium text-muted-foreground">Before</p>
-                <p className="mt-2">{selectedDiff.diff.summary.before}</p>
-                <p className="mt-4 font-medium text-muted-foreground">After</p>
-                <p className="mt-2">{selectedDiff.diff.summary.after}</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <p className="text-sm font-medium">Skills and Keywords</p>
-              <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm">
-                <p className="font-medium text-muted-foreground">Before</p>
-                <p className="mt-2">{selectedDiff.diff.skills.before.join(", ") || "-"}</p>
-                <p className="mt-4 font-medium text-muted-foreground">After</p>
-                <p className="mt-2">{selectedDiff.diff.skills.after.join(", ") || "-"}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }

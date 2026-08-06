@@ -7,10 +7,12 @@ import type { BrowserPage } from "@/types/browser";
 import type { AutomationRunContext, EngineHooks } from "../engine/context";
 import { BaseAdapter } from "./base-adapter";
 import type { AdapterFieldHint } from "./base";
+import { AutomationMode } from "@/types/collector";
 
 export class SmartRecruitersAdapter extends BaseAdapter {
   readonly id = "smartrecruiters";
   readonly displayName = "SmartRecruiters";
+  readonly mode = AutomationMode.FULL_AUTOMATION;
   protected readonly hostPatterns = ["smartrecruiters.com", "jobs.smartrecruiters.com"];
   protected readonly domSignatures = [
     "[data-test='apply-form']",
