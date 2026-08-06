@@ -4,6 +4,7 @@ import { loadApplicationPackage, type ApplicationResult, upsertApplication } fro
 import { ApplicationStatus } from "@/types/application";
 import { createNotification } from "@/services/notifications/notifications";
 import { NotificationType } from "@/types/notification";
+import type { BrowserPage } from "@/types/browser";
 
 export async function startApplication(uid: string, jobId: string): Promise<ApplicationResult> {
   logApply("info", "Starting application", { jobId });

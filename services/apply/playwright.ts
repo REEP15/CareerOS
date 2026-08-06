@@ -8,6 +8,8 @@ import type { ApplicationPackage } from "@/services/apply/tracker";
 import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
 import { getSettings } from "@/services/settings/settings";
 import { escapeRegExp } from "@/lib/utils";
+import type { BrowserPage, BrowserElement, BoundingBox } from "@/types/browser";
+import { wrapPlaywrightPage, loadPlaywright, type Page as PlaywrightPage } from "./browser-adapter";
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 const MAX_RETRIES = 3;
@@ -39,6 +41,7 @@ type Page = {
   getByLabel: (label: string | RegExp) => Locator;
   locator: (selector: string) => Locator;
   url: () => string;
+  waitForLoadState: (state: "load" | "domcontentloaded" | "networkidle") => Promise<void>;
 };
 
 export type PlaywrightApplyResult = {
@@ -76,9 +79,11 @@ export async function launchApplicationBrowser(uid: string, applicationPackage: 
       { attempts: MAX_RETRIES, delayMs: RETRY_DELAY_MS, label: "browser launch" },
     );
 
-    const page = await browser.newPage();
+    const rawPage = await browser.newPage() as PlaywrightPage;
+    const page = await wrapPlaywrightPage(rawPage);
+    
     await withRetry(
-      () => page.goto(applicationPackage.job.applyUrl, { waitUntil: "domcontentloaded", timeout: timeoutMs }),
+      () => page.goto(applicationPackage.job.applyUrl),
       { attempts: MAX_RETRIES, delayMs: RETRY_DELAY_MS, label: "page navigation" },
     );
 
@@ -148,24 +153,34 @@ export async function launchApplicationBrowser(uid: string, applicationPackage: 
   }
 }
 
-async function fillKnownField(page: Page, label: string, value: string): Promise<boolean> {
+async function fillKnownField(page: BrowserPage, label: string, value: string): Promise<boolean> {
   return withRetry(
     async () => {
-      const locator = page.getByLabel(new RegExp(escapeRegExp(label), "i"));
+      // Try to find element by label text using selector
+      const labelSelectors = [
+        `input[placeholder*="${label}" i]`,
+        `input[name*="${label}" i]`,
+        `input[id*="${label}" i]`,
+        `textarea[placeholder*="${label}" i]`,
+        `textarea[name*="${label}" i]`,
+      ];
 
-      if ((await locator.count()) === 0) {
-        return false;
+      for (const selector of labelSelectors) {
+        const el = await page.query(selector);
+        if (el && (await el.isVisible())) {
+          await el.fill(value);
+          logApply("info", "Filled known field", { label });
+          return true;
+        }
       }
 
-      await locator.first().fill(value);
-      logApply("info", "Filled known field", { label });
-      return true;
+      return false;
     },
     { attempts: 2, delayMs: 500, label: `fill field "${label}"` },
   ).catch(() => false);
 }
 
-async function uploadGeneratedFile(page: Page, label: RegExp, pdfUrl: string): Promise<boolean> {
+async function uploadGeneratedFile(page: BrowserPage, label: RegExp, pdfUrl: string): Promise<boolean> {
   let filePath: string | null = null;
   let isTempFile = false;
 
@@ -188,19 +203,27 @@ async function uploadGeneratedFile(page: Page, label: RegExp, pdfUrl: string): P
       return false;
     }
 
-    const labelledInput = page.getByLabel(label);
-
-    if ((await labelledInput.count()) > 0) {
-      await labelledInput.first().setInputFiles(filePath);
-      logApply("info", "Uploaded file via label", { label: label.source });
-      return true;
+    // Try to find file input by label
+    const fileInputs = await page.queryAll("input[type='file']");
+    
+    for (const input of fileInputs) {
+      const ariaLabel = await input.getAttribute("aria-label");
+      const placeholder = await input.getAttribute("placeholder");
+      const name = await input.getAttribute("name");
+      
+      const identifier = [ariaLabel, placeholder, name].filter(Boolean).join(" ").toLowerCase();
+      
+      if (label.test(identifier)) {
+        await input.setInputFiles(filePath);
+        logApply("info", "Uploaded file via label", { label: label.source });
+        return true;
+      }
     }
 
-    const fileInputs = page.locator("input[type='file']");
-
-    if ((await fileInputs.count()) > 0) {
-      await fileInputs.first().setInputFiles(filePath);
-      logApply("info", "Uploaded file via file input");
+    // Fallback to first file input
+    if (fileInputs.length > 0) {
+      await fileInputs[0].setInputFiles(filePath);
+      logApply("info", "Uploaded file via first file input");
       return true;
     }
 
@@ -213,13 +236,11 @@ async function uploadGeneratedFile(page: Page, label: RegExp, pdfUrl: string): P
   }
 }
 
-async function detectUnknownFields(page: Page): Promise<string[]> {
+async function detectUnknownFields(page: BrowserPage): Promise<string[]> {
   const unknownFields: string[] = [];
-  const inputs = page.locator("input:not([type='hidden']):not([type='submit']):not([type='button']), textarea, select");
-  const count = await inputs.count();
+  const inputs = await page.queryAll("input:not([type='hidden']):not([type='submit']):not([type='button']), textarea, select");
 
-  for (let index = 0; index < count; index += 1) {
-    const input = inputs.nth(index);
+  for (const input of inputs) {
     const type = (await input.getAttribute("type")) ?? "text";
     const name = (await input.getAttribute("name")) ?? "";
     const id = (await input.getAttribute("id")) ?? "";
@@ -267,17 +288,17 @@ function isKnownFieldIdentifier(identifier: string) {
   return knownPatterns.some((pattern) => normalized.includes(pattern));
 }
 
-async function detectReviewPage(page: Page): Promise<boolean> {
+async function detectReviewPage(page: BrowserPage): Promise<boolean> {
   const url = page.url().toLowerCase();
-  const reviewIndicators = page.locator(
+  const reviewIndicators = await page.queryAll(
     "[class*='review'], [id*='review'], [data-testid*='review'], h1, h2, h3",
   );
-  const count = Math.min(await reviewIndicators.count(), 20);
+  const count = Math.min(reviewIndicators.length, 20);
 
   for (let index = 0; index < count; index += 1) {
-    const text = await reviewIndicators.nth(index).inputValue().catch(async () => {
-      const locator = reviewIndicators.nth(index);
-      return (await locator.getAttribute("aria-label")) ?? "";
+    const element = reviewIndicators[index];
+    const text = await element.innerText().catch(async () => {
+      return (await element.getAttribute("aria-label")) ?? "";
     });
 
     if (/review|confirm|summary|submit application|final step/i.test(text)) {
@@ -286,15 +307,4 @@ async function detectReviewPage(page: Page): Promise<boolean> {
   }
 
   return /review|confirm|summary|submit/i.test(url);
-}
-
-async function loadPlaywright() {
-  try {
-    const dynamicImport = new Function("specifier", "return import(specifier)") as (
-      specifier: string,
-    ) => Promise<PlaywrightModule>;
-    return await dynamicImport("playwright");
-  } catch {
-    throw new Error("Playwright is not installed. Run `npm install playwright` before starting applications.");
-  }
 }

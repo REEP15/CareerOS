@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Automation Test</title>
+</head>
+<body>
+    <h1>Automation Validation Test</h1>
+    <button onclick="runTest()">Run Test</button>
+    <pre id="results"></pre>
+    
+    <script>
+    async function runTest() {
+        const results = await fetch('/api/automation/test');
+        const data = await results.json();
+        document.getElementById('results').textContent = JSON.stringify(data, null, 2);
+    }
+    </script>
+</body>
+</html>

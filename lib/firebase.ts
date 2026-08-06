@@ -34,6 +34,8 @@ export const COLLECTIONS = {
   tailoredResumes: "tailoredResumes",
   notifications: "notifications",
   apiKeys: "apiKeys",
+  automationState: "automationState",
+  automationLogs: "automationLogs",
 } as const;
 
 export const USER_COLLECTIONS = {
@@ -48,6 +50,8 @@ export const USER_COLLECTIONS = {
   matches: "matches",
   tailoredResumes: "tailoredResumes",
   notifications: "notifications",
+  automationState: "automationState",
+  automationLogs: "automationLogs",
 } as const;
 
 export { doc, getDoc } from "firebase/firestore";
@@ -193,6 +197,14 @@ export function getUserCoverLettersCollection(uid: string): CollectionReference<
 
 export function getUserApiKeysCollection(uid: string): CollectionReference<ApiKeyStorage> {
   return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.apiKeys}`) as CollectionReference<ApiKeyStorage>;
+}
+
+export function getUserAutomationStateCollection(uid: string) {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.automationState}`);
+}
+
+export function getUserAutomationLogsCollection(uid: string) {
+  return collection(getDb(), `users/${uid}/${USER_COLLECTIONS.automationLogs}`);
 }
 
 export function createArtifactDocId(jobId: string, version: number) {

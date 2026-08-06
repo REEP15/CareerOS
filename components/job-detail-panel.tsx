@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { ArrowLeft, Download, FileText, Mail, Rocket } from "lucide-react";
+import { useState, useTransition, useEffect } from "react";
+import { ArrowLeft, Download, FileText, Mail, Rocket, Play, Pause, X, Loader2, FileText as FileTextIcon, Image } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,9 @@ import {
 } from "@/types/application";
 import type { CoverLetter } from "@/types/coverLetter";
 import type { TailoredResume } from "@/types/tailoredResume";
+import { LogsViewer } from "@/components/automation/logs-viewer";
+import { ScreenshotViewer } from "@/components/automation/screenshot-viewer";
+import { ConfirmationDialog } from "@/components/automation/confirmation-dialog";
 
 type JobDetailPanelProps = {
   package: ApplicationPackage;
@@ -44,6 +47,17 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
   const [isPending, startTransition] = useTransition();
   const [notes, setNotes] = useState(pkg.application.notes ?? "");
   const [status, setStatus] = useState(pkg.application.status);
+  
+  // Automation state
+  const [automationStatus, setAutomationStatus] = useState<"idle" | "running" | "paused" | "completed" | "error">("idle");
+  const [automationRunId, setAutomationRunId] = useState<string | null>(null);
+  const [automationProgress, setAutomationProgress] = useState(0);
+  
+  // UI state
+  const [showLogs, setShowLogs] = useState(false);
+  const [showScreenshots, setShowScreenshots] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<any>(null);
 
   const { job, match, tailoredResume, coverLetter, application } = pkg;
 
@@ -77,6 +91,162 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
 
   const handleSaveNotes = () => {
     handleAction("/api/applications", { jobId: job.id, notes }, "Notes saved.");
+  };
+
+  // Automation control functions
+  const handleStartAutomation = () => {
+    startTransition(async () => {
+      try {
+        setAutomationStatus("running");
+        setAutomationProgress(0);
+        
+        const response = await authFetch("/api/automation/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId: job.id }),
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.success) {
+          setAutomationStatus("error");
+          toast.error(payload.error ?? "Automation failed to start.");
+          return;
+        }
+
+        setAutomationRunId(payload.result?.runId || null);
+        toast.success("Automation started successfully.");
+        
+        // Poll for status updates
+        pollAutomationStatus(payload.result?.runId);
+      } catch {
+        setAutomationStatus("error");
+        toast.error("An unexpected error occurred starting automation.");
+      }
+    });
+  };
+
+  const handlePauseAutomation = () => {
+    startTransition(async () => {
+      try {
+        await authFetch("/api/automation/pause", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId: job.id, reason: "User requested pause" }),
+        });
+        
+        setAutomationStatus("paused");
+        toast.success("Automation paused.");
+      } catch {
+        toast.error("Failed to pause automation.");
+      }
+    });
+  };
+
+  const handleResumeAutomation = () => {
+    if (!automationRunId) {
+      toast.error("No automation run to resume.");
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        setAutomationStatus("running");
+        
+        const response = await authFetch("/api/automation/resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId: job.id, runId: automationRunId }),
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.success) {
+          setAutomationStatus("error");
+          toast.error(payload.error ?? "Failed to resume automation.");
+          return;
+        }
+
+        toast.success("Automation resumed.");
+        pollAutomationStatus(automationRunId);
+      } catch {
+        setAutomationStatus("error");
+        toast.error("An unexpected error occurred resuming automation.");
+      }
+    });
+  };
+
+  const handleCancelAutomation = () => {
+    startTransition(async () => {
+      try {
+        await authFetch("/api/automation/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId: job.id }),
+        });
+        
+        setAutomationStatus("idle");
+        setAutomationRunId(null);
+        setAutomationProgress(0);
+        toast.success("Automation cancelled.");
+      } catch {
+        toast.error("Failed to cancel automation.");
+      }
+    });
+  };
+
+  const pollAutomationStatus = (runId: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await authFetch(`/api/automation/status?jobId=${job.id}&runId=${runId}`);
+        const payload = await response.json();
+
+        if (!response.ok || !payload.success) {
+          clearInterval(interval);
+          setAutomationStatus("error");
+          return;
+        }
+
+        const status = payload.status;
+        if (status.state === "completed" || status.state === "submitted" || status.state === "failed" || status.state === "aborted") {
+          clearInterval(interval);
+          setAutomationStatus(status.state === "failed" || status.state === "aborted" ? "error" : "completed");
+          setAutomationProgress(100);
+          router.refresh();
+        } else if (status.state === "awaiting_user") {
+          clearInterval(interval);
+          setAutomationStatus("paused");
+          // Show confirmation dialog if pending
+          if (status.pendingConfirmation) {
+            setPendingConfirmation(status.pendingConfirmation);
+            setShowConfirmation(true);
+          }
+        } else {
+          // Update progress based on filled fields
+          const totalFields = status.metadata?.totalFields || 1;
+          const filledFields = status.metadata?.filledFields || 0;
+          setAutomationProgress(Math.round((filledFields / totalFields) * 100));
+        }
+      } catch {
+        clearInterval(interval);
+        setAutomationStatus("error");
+      }
+    }, 2000); // Poll every 2 seconds
+  };
+
+  const handleConfirmationResponse = async (answer: any) => {
+    if (!automationRunId) return;
+
+    try {
+      await authFetch("/api/automation/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id, runId: automationRunId, answer }),
+      });
+      
+      setAutomationStatus("running");
+      pollAutomationStatus(automationRunId);
+    } catch {
+      toast.error("Failed to submit confirmation.");
+    }
   };
 
   return (
@@ -242,14 +412,172 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
                 <Mail className="h-4 w-4" />
                 Generate Cover Letter
               </Button>
+              
+              {/* Automation Controls */}
+              {automationStatus === "idle" ? (
+                <Button
+                  disabled={isPending || !tailoredResume}
+                  onClick={handleStartAutomation}
+                >
+                  <Rocket className="h-4 w-4" />
+                  Auto-Apply
+                </Button>
+              ) : automationStatus === "running" ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Running... {automationProgress}%</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted">
+                    <div 
+                      className="h-full rounded-full bg-primary transition-all" 
+                      style={{ width: `${automationProgress}%` }}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePauseAutomation}
+                      disabled={isPending}
+                    >
+                      <Pause className="h-4 w-4" />
+                      Pause
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowLogs(true)}
+                      disabled={isPending}
+                    >
+                      <FileTextIcon className="h-4 w-4" />
+                      Logs
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowScreenshots(true)}
+                      disabled={isPending}
+                    >
+                      <Image className="h-4 w-4" />
+                      Screenshots
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelAutomation}
+                      disabled={isPending}
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : automationStatus === "paused" ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Automation paused</p>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleResumeAutomation}
+                      disabled={isPending}
+                    >
+                      <Play className="h-4 w-4" />
+                      Resume
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowLogs(true)}
+                      disabled={isPending}
+                    >
+                      <FileTextIcon className="h-4 w-4" />
+                      Logs
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowScreenshots(true)}
+                      disabled={isPending}
+                    >
+                      <Image className="h-4 w-4" />
+                      Screenshots
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelAutomation}
+                      disabled={isPending}
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : automationStatus === "completed" ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <Rocket className="h-4 w-4" />
+                    Application completed successfully
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowLogs(true)}
+                      disabled={isPending}
+                    >
+                      <FileTextIcon className="h-4 w-4" />
+                      View Logs
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowScreenshots(true)}
+                      disabled={isPending}
+                    >
+                      <Image className="h-4 w-4" />
+                      View Screenshots
+                    </Button>
+                  </div>
+                </div>
+              ) : automationStatus === "error" ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-red-600">
+                    <X className="h-4 w-4" />
+                    Automation failed or was cancelled
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowLogs(true)}
+                      disabled={isPending}
+                    >
+                      <FileTextIcon className="h-4 w-4" />
+                      View Logs
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowScreenshots(true)}
+                      disabled={isPending}
+                    >
+                      <Image className="h-4 w-4" />
+                      View Screenshots
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+              
               <Button
+                variant="outline"
                 disabled={isPending || !tailoredResume}
                 onClick={() =>
                   handleAction("/api/apply/start", { jobId: job.id }, "Application opened for review.")
                 }
               >
                 <Rocket className="h-4 w-4" />
-                Start Application
+                Start Application (Manual)
               </Button>
               {tailoredResume ? (
                 <a
@@ -356,6 +684,42 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
           ) : null}
         </div>
       </div>
+
+      {/* Automation UI Components */}
+      <LogsViewer
+        jobId={job.id}
+        runId={automationRunId || undefined}
+        isOpen={showLogs}
+        onClose={() => setShowLogs(false)}
+      />
+      
+      <ScreenshotViewer
+        jobId={job.id}
+        runId={automationRunId || undefined}
+        isOpen={showScreenshots}
+        onClose={() => setShowScreenshots(false)}
+      />
+      
+      <ConfirmationDialog
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={(answer) => {
+          // Handle confirmation response
+          handleConfirmationResponse(answer);
+        }}
+        onSkip={() => {
+          // Handle skip
+          handleConfirmationResponse({ answered: false });
+        }}
+        onAbort={() => {
+          // Handle abort
+          handleCancelAutomation();
+        }}
+        question={pendingConfirmation?.question || ""}
+        reason={pendingConfirmation?.reason || ""}
+        proposedAnswer={pendingConfirmation?.proposedAnswer}
+        field={pendingConfirmation?.field}
+      />
     </div>
   );
 }

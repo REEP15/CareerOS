@@ -42,3 +42,6 @@ next-env.d.ts
 
 # engineering documentation
 docs/phase2-decisions.md
+
+# phase 3 reference implementation
+v0_phase3/
