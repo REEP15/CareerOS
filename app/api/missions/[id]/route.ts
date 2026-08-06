@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { verifyAuthToken } from "@/lib/server-auth";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
 import { getMission } from "@/services/missions/missions";
 
 export async function GET(

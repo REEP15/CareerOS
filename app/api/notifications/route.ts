@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { verifyAuthToken } from "@/lib/server-auth";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
 import { getNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } from "@/services/notifications/notifications";
 
 export async function GET(request: Request) {

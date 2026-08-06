@@ -1,6 +1,6 @@
-import type { JobPosting } from "@/types/job";
-import type { MatchResult } from "@/types/match";
-import type { ResumeProfile } from "@/types/resume";
+import type { JobPosting } from "@/shared/types/job";
+import type { MatchResult } from "@/shared/types/match";
+import type { ResumeProfile } from "@/shared/types/resume";
 
 export function createResumeTailoringPrompt(resume: ResumeProfile, job: JobPosting, match: MatchResult | null) {
   return `Tailor the supplied ResumeProfile for the supplied JobPosting.

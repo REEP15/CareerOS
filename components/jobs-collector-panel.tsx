@@ -497,7 +497,7 @@ export function JobsCollectorPanel({ jobs }: { jobs: JobWithApplicationPackage[]
                             size="sm"
                             onClick={() =>
                               handleJobAction(
-                                "/api/apply/start",
+                                "/api/automation/run",
                                 job.id,
                                 `Application opened for ${job.title}.`,
                               )

@@ -4,15 +4,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "firebase/auth";
-import { automationLoggingService } from "@/services/apply/logging-service";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
+import { automationScreenshotService } from "@/services/apply/screenshot-service";
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -24,17 +23,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing required field: jobId" }, { status: 400 });
     }
 
-    const logs = await automationLoggingService.getLogsByRun(user.uid, jobId, runId || undefined);
-    
-    // Filter logs that have screenshot URLs
-    const screenshots = logs
-      .filter((log) => log.screenshotUrl)
-      .map((log) => ({
-        id: log.id || `${log.timestamp}`,
-        url: log.screenshotUrl!,
-        label: log.data?.label as string || log.message,
-        timestamp: log.timestamp,
-      }));
+    // Screenshots are stored in Firebase, can be fetched directly
+    const screenshots = await automationScreenshotService.getScreenshots(authResult.uid, jobId);
 
     return NextResponse.json({ success: true, screenshots });
   } catch (error) {

@@ -4,7 +4,7 @@ import { getStoredApplications } from "@/services/apply/tracker";
 import { getStoredJobs } from "@/services/collector/save";
 import { getStoredMatches } from "@/services/matcher/matcher";
 import { getMissions } from "@/services/missions/missions";
-import { ApplicationStatus } from "@/types/application";
+import { ApplicationStatus } from "@/shared/types/application";
 
 export type DashboardMetrics = {
   jobsCollected: number;

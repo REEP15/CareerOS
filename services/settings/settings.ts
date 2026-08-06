@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
-import { getUserSettingsCollection, getDb, isFirebaseConfigured, isFirebaseConfigured as checkFirebase } from "@/lib/firebase";
-import { DEFAULT_SETTINGS, type AppSettings } from "@/types/settings";
+import { getUserSettingsCollection, getDb, isFirebaseConfigured, isFirebaseConfigured as checkFirebase } from "@/shared/lib/firebase";
+import { DEFAULT_SETTINGS, type AppSettings } from "@/shared/types/settings";
 
 const SETTINGS_DOC_ID = "primary";
 

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { verifyAuthToken } from "@/lib/server-auth";
-import { getDb } from "@/lib/firebase";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
+import { getDb } from "@/shared/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { createApplicationPackageService } from "@/services/tailoring/package";
 import { createCoverLetterGenerator } from "@/services/cover-letter/generator";
-import type { ResumeProfile } from "@/types/resume";
-import type { ApplicationPackage } from "@/types/application";
+import type { ResumeProfile } from "@/shared/types/resume";
+import type { ApplicationPackage } from "@/shared/types/application";
 
 const requestSchema = z.object({
   jobId: z.string().min(1),

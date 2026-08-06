@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
-import { getUserApiKeysCollection, getDb, isFirebaseConfigured } from "@/lib/firebase";
-import type { ApiKeyStorage, ApiKeyProvider } from "@/types/api-keys";
+import { getUserApiKeysCollection, getDb, isFirebaseConfigured } from "@/shared/lib/firebase";
+import type { ApiKeyStorage, ApiKeyProvider } from "@/shared/types/api-keys";
 
 const API_KEYS_DOC_ID = "user";
 

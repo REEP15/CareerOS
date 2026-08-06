@@ -4,19 +4,15 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "firebase/auth";
-import { AutomationService } from "@/services/apply/automation-service";
-import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
-import { generateResumePDF, generateCoverLetterPDF } from "@/services/files/pdf-generator";
-import { uploadScreenshot } from "@/services/apply/screenshot-service";
-import { requestUserConfirmation } from "@/services/apply/confirmation-service";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
+
+const WORKER_URL = process.env.WORKER_URL || 'http://localhost:3001';
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -28,42 +24,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing required parameter: jobId" }, { status: 400 });
     }
 
-    // Create automation service dependencies
-    const deps = {
-      userId: user.uid,
-      jobId,
-      runId: runId || "", // Use the provided runId
-      uploadScreenshot: async (label: string) => {
-        // Placeholder - actual screenshot capture happens in the engine
-        return uploadScreenshot(user.uid, jobId, label);
+    // Proxy to worker service
+    const workerResponse = await fetch(`${WORKER_URL}/status/${runId || jobId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      requestUserConfirmation: async (req: any) => {
-        return requestUserConfirmation(user.uid, jobId, req);
-      },
-      isAborted: () => false,
-      logSink: (level: string, message: string, data?: any) => {
-        console.log(`[${level.toUpperCase()}] ${message}`, data);
-      },
-      getResumeProfile: async () => {
-        return loadPrimaryResumeProfile(user.uid);
-      },
-      generateResumePDF: async (resume: any) => {
-        return generateResumePDF(resume);
-      },
-      generateCoverLetterPDF: async (content: string) => {
-        return generateCoverLetterPDF(content);
-      },
-      page: undefined, // No page available for status check
-    };
+    });
 
-    const service = new AutomationService(deps, { userId: user.uid, jobId });
-    const status = await service.getStatus(runId || undefined);
+    const workerData = await workerResponse.json();
 
-    if (!status) {
-      return NextResponse.json({ error: "Run status not found" }, { status: 404 });
+    if (!workerResponse.ok) {
+      throw new Error(workerData.error || 'Worker service error');
     }
 
-    return NextResponse.json({ success: true, status });
+    return NextResponse.json({ success: true, status: workerData.status });
   } catch (error) {
     console.error("Automation status error:", error);
     return NextResponse.json(

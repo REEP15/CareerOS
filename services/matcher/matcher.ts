@@ -6,14 +6,14 @@ import {
   getUserMatchesCollection,
   getUserResumeCollection,
   isFirebaseConfigured,
-} from "@/lib/firebase";
+} from "@/shared/lib/firebase";
 import { parseMatchResponse } from "@/services/matcher/parser";
 import { createJobMatchPrompt } from "@/services/matcher/prompts";
 import { calculateOverallScore, clampScore } from "@/services/matcher/scoring";
-import { getJobMatchProvider } from "@/lib/ai";
-import type { JobPosting } from "@/types/job";
-import type { MatchResult } from "@/types/match";
-import type { ResumeProfile } from "@/types/resume";
+import { getJobMatchProvider } from "@/shared/lib/ai";
+import type { JobPosting } from "@/shared/types/job";
+import type { MatchResult } from "@/shared/types/match";
+import type { ResumeProfile } from "@/shared/types/resume";
 
 export async function matchJob(resume: ResumeProfile, job: JobPosting): Promise<MatchResult> {
   const provider = getJobMatchProvider();

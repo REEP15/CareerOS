@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { verifyAuthToken } from "@/lib/server-auth";
-import { getDb } from "@/lib/firebase";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
+import { getDb } from "@/shared/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { createApplicationPackageService } from "@/services/tailoring/package";
 import { createResumeTailor } from "@/services/tailoring/tailor";
 import { createATSAnalyzer } from "@/services/ats/analyzer";
-import type { ResumeProfile } from "@/types/resume";
-import type { ApplicationPackage, ApplicationStatus } from "@/types/application";
+import type { ResumeProfile } from "@/shared/types/resume";
+import type { ApplicationPackage, ApplicationStatus } from "@/shared/types/application";
 
 const requestSchema = z.object({
   jobId: z.string().min(1),
@@ -104,15 +104,34 @@ export async function POST(request: Request) {
           location: jobLocation,
           salary: jobSalary,
           url: jobUrl,
+          source: "",
+          applyUrl: jobUrl,
         },
         tailoredResume: {
           id: `tailored-${jobId}`,
-          content: tailoredResume,
-          generatedAt: new Date().toISOString(),
+          jobId: jobId,
+          version: 1,
+          versionLabel: "v1",
+          profile: tailoredResume,
+          diff: {
+            summary: { before: "", after: "" },
+            skills: { before: [], after: [] },
+            prioritizedProjects: [],
+            keywordOptimizations: [],
+          },
+          pdfUrl: "",
+          createdAt: new Date().toISOString(),
         },
         coverLetter: {
+          id: `cover-${jobId}`,
+          jobId: jobId,
+          version: 1,
+          versionLabel: "v1",
+          company: jobCompany,
+          role: jobTitle,
           content: "",
-          generatedAt: new Date().toISOString(),
+          pdfUrl: "",
+          createdAt: new Date().toISOString(),
         },
         atsAnalysis: {
           originalScore: atsAnalysis.originalScore,

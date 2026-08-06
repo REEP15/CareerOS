@@ -1,5 +1,5 @@
-import type { JobPosting } from "@/types/job";
-import type { ResumeProfile } from "@/types/resume";
+import type { JobPosting } from "@/shared/types/job";
+import type { ResumeProfile } from "@/shared/types/resume";
 
 export function createJobMatchPrompt(resume: ResumeProfile, job: JobPosting) {
   return `Compare the supplied ResumeProfile and JobPosting.

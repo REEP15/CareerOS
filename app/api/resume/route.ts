@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { z } from "zod";
 
-import { getDb, isFirebaseConfigured } from "@/lib/firebase";
-import { verifyAuthToken } from "@/lib/server-auth";
-import { removeUndefined } from "@/lib/utils";
+import { getDb, isFirebaseConfigured } from "@/shared/lib/firebase";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
+import { removeUndefined } from "@/shared/lib/utils";
 import { parseResume } from "@/services/resume/parser";
-import type { ResumeProfile } from "@/types/resume";
+import type { ResumeProfile } from "@/shared/types/resume";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 

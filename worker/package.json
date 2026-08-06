@@ -1,0 +1,24 @@
+{
+  "name": "careeros-worker",
+  "version": "1.0.0",
+  "description": "Browser automation worker for CareerOS",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "firebase": "^12.16.0",
+    "playwright": "^1.61.1",
+    "playwright-core": "^1.61.1",
+    "selenium-webdriver": "^4.46.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20"
+  }
+}

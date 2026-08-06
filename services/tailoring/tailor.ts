@@ -1,6 +1,6 @@
 import { getEffectiveProvider, makeChatGPTRequest, makeGeminiRequest, makeDeepSeekRequest } from "@/services/ai/providers";
-import type { ResumeProfile } from "@/types/resume";
-import type { TailoringOptions } from "@/types/application";
+import type { ResumeProfile } from "@/shared/types/resume";
+import type { TailoringOptions } from "@/shared/types/application";
 
 /**
  * Token management (reused from Phase 1)

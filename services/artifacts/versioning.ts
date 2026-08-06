@@ -6,7 +6,7 @@ import {
   formatVersionLabel,
   getDb,
   isFirebaseConfigured,
-} from "@/lib/firebase";
+} from "@/shared/lib/firebase";
 
 export async function getNextArtifactVersion(uid: string, jobId: string, collectionName: typeof USER_COLLECTIONS.tailoredResumes | typeof USER_COLLECTIONS.coverLetters) {
   if (!isFirebaseConfigured()) {

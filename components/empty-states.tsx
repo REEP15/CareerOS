@@ -3,8 +3,8 @@ import { EmptyState } from "@/components/empty-state";
 export function EmptyJobs() {
   return (
     <EmptyState
-      title="No jobs found"
-      description="Run the collector to seed your pipeline, or adjust your filters."
+      title="No jobs collected yet"
+      description="Run Job Collection to populate your pipeline with real job postings."
     />
   );
 }

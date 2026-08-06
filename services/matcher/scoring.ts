@@ -1,4 +1,4 @@
-import type { MatchResult } from "@/types/match";
+import type { MatchResult } from "@/shared/types/match";
 
 const MATCH_WEIGHTS = {
   skillsScore: 0.4,

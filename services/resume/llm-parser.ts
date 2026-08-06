@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { getEffectiveProvider, makeChatGPTRequest, makeGeminiRequest, makeDeepSeekRequest } from "@/services/ai/providers";
 import { getSettings } from "@/services/settings/settings";
-import type { ResumeProfile } from "@/types/resume";
-import type { ResumeExtractionProvider, ResumeExtractionContext } from "@/lib/ai";
+import type { ResumeProfile } from "@/shared/types/resume";
+import type { ResumeExtractionProvider, ResumeExtractionContext } from "@/shared/lib/ai";
 
 // Zod schema for structured resume extraction
 const personalInfoSchema = z.object({

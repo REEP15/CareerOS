@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { escapeRegExp } from "@/lib/utils";
+import { escapeRegExp } from "@/shared/lib/utils";
 
 const generatedRoot = path.join(process.cwd(), "public", "generated");
 

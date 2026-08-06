@@ -1,6 +1,6 @@
-import { parsePdf, extractStructuredText } from "@/lib/pdf-parse-wrapper";
+import { parsePdf, extractStructuredText } from "@/shared/lib/pdf-parse-wrapper";
 import { createLLMResumeParser } from "@/services/resume/llm-parser";
-import type { ResumeProfile } from "@/types/resume";
+import type { ResumeProfile } from "@/shared/types/resume";
 
 // This file should only be imported by server-side code (API routes, server actions, etc.)
 // It uses Node-only libraries like pdf-parse

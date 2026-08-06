@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Certification } from "@/types/resume";
+import type { Certification } from "@/shared/types/resume";
 
 const personalSchema = z.object({
   name: z.string(),

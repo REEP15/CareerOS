@@ -1,10 +1,10 @@
 import { doc, setDoc, getDoc, collection, getDocs } from "firebase/firestore";
-import { getDb } from "@/lib/firebase";
+import { getDb } from "@/shared/lib/firebase";
 import { createResumeTailor } from "./tailor";
 import { createCoverLetterGenerator } from "../cover-letter/generator";
 import { createATSAnalyzer } from "../ats/analyzer";
-import type { ResumeProfile } from "@/types/resume";
-import type { ApplicationPackage, TailoringOptions, CoverLetterOptions, ATSAnalysisOptions } from "@/types/application";
+import type { ResumeProfile } from "@/shared/types/resume";
+import type { ApplicationPackage, TailoringOptions, CoverLetterOptions, ATSAnalysisOptions } from "@/shared/types/application";
 
 /**
  * Application Package Orchestrator
@@ -28,6 +28,8 @@ export class ApplicationPackageService {
       location?: string;
       salary?: string;
       url?: string;
+      source?: string;
+      applyUrl?: string;
     },
     options?: {
       tailoring?: TailoringOptions;
@@ -65,15 +67,42 @@ export class ApplicationPackageService {
     const applicationPackage: ApplicationPackage = {
       id: job.id,
       userId,
-      job,
+      job: {
+        id: job.id,
+        title: job.title,
+        company: job.company,
+        description: job.description,
+        location: job.location,
+        salary: job.salary,
+        url: job.url,
+        source: job.source,
+        applyUrl: job.applyUrl,
+      },
       tailoredResume: {
         id: `tailored-${job.id}`,
-        content: tailoredResume,
-        generatedAt: new Date().toISOString(),
+        jobId: job.id,
+        version: 1,
+        versionLabel: "v1",
+        profile: tailoredResume,
+        diff: {
+          summary: { before: "", after: "" },
+          skills: { before: [], after: [] },
+          prioritizedProjects: [],
+          keywordOptimizations: [],
+        },
+        pdfUrl: "",
+        createdAt: new Date().toISOString(),
       },
       coverLetter: {
+        id: `cover-${job.id}`,
+        jobId: job.id,
+        version: 1,
+        versionLabel: "v1",
+        company: job.company,
+        role: job.title,
         content: coverLetter,
-        generatedAt: new Date().toISOString(),
+        pdfUrl: "",
+        createdAt: new Date().toISOString(),
       },
       atsAnalysis,
       originalResumeId: originalResume.id,

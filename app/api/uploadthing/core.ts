@@ -1,5 +1,5 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
-import { verifyAuthToken } from "@/lib/server-auth";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
 
 const f = createUploadthing();
 

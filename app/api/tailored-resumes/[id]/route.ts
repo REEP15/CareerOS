@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { doc, deleteDoc } from "firebase/firestore";
 import { deleteObject, ref } from "firebase/storage";
 
-import { verifyAuthToken } from "@/lib/server-auth";
-import { getFileStorage, getDb } from "@/lib/firebase";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
+import { getFileStorage, getDb } from "@/shared/lib/firebase";
 import { createApplicationPackageService } from "@/services/tailoring/package";
 
 export async function GET(
@@ -30,10 +30,17 @@ export async function GET(
     }
 
     // Return tailored resume from package
+    if (!applicationPackage.tailoredResume) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Tailored resume not found in package" 
+      }, { status: 404 });
+    }
+
     return NextResponse.json({ 
       success: true, 
-      tailoredResume: applicationPackage.tailoredResume.content,
-      generatedAt: applicationPackage.tailoredResume.generatedAt
+      tailoredResume: applicationPackage.tailoredResume.profile,
+      generatedAt: applicationPackage.tailoredResume.createdAt
     });
   } catch (error) {
     return NextResponse.json(

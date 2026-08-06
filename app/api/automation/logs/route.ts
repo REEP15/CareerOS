@@ -4,15 +4,16 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "firebase/auth";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
 import { automationLoggingService } from "@/services/apply/logging-service";
+
+const WORKER_URL = process.env.WORKER_URL || 'http://localhost:3001';
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -24,7 +25,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing required field: jobId" }, { status: 400 });
     }
 
-    const logs = await automationLoggingService.getLogsByRun(user.uid, jobId, runId || undefined);
+    // Logs are stored in Firebase, can be fetched directly
+    const logs = await automationLoggingService.getLogs(authResult.uid, jobId);
 
     return NextResponse.json({ success: true, logs });
   } catch (error) {

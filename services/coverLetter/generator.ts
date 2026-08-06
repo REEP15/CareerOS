@@ -1,7 +1,7 @@
 import { collection, doc, getDocs, orderBy, query, setDoc, where } from "firebase/firestore";
 
-import { getCoverLetterProvider } from "@/lib/ai";
-import { USER_COLLECTIONS, getDb, isFirebaseConfigured } from "@/lib/firebase";
+import { getCoverLetterProvider } from "@/shared/lib/ai";
+import { USER_COLLECTIONS, getDb, isFirebaseConfigured } from "@/shared/lib/firebase";
 import {
   buildArtifactId,
   buildVersionLabel,
@@ -12,10 +12,10 @@ import { createCoverLetterPrompt } from "@/services/coverLetter/prompts";
 import { parseCoverLetterResponse } from "@/services/coverLetter/parser";
 import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
 import { writeTextPdf } from "@/services/tailoring/pdf";
-import type { CoverLetter } from "@/types/coverLetter";
-import type { JobPosting } from "@/types/job";
-import type { MatchResult } from "@/types/match";
-import type { ResumeProfile } from "@/types/resume";
+import type { CoverLetter } from "@/shared/types/coverLetter";
+import type { JobPosting } from "@/shared/types/job";
+import type { MatchResult } from "@/shared/types/match";
+import type { ResumeProfile } from "@/shared/types/resume";
 
 export async function generateCoverLetter(uid: string, job: JobPosting, match: MatchResult | null) {
   const resume = await loadPrimaryResumeProfile(uid);

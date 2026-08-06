@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { verifyAuthToken } from "@/lib/server-auth";
-import { removeUndefined } from "@/lib/utils";
-import { getDb } from "@/lib/firebase";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
+import { removeUndefined } from "@/shared/lib/utils";
+import { getDb } from "@/shared/lib/firebase";
 import { createApplicationPackageService } from "@/services/tailoring/package";
-import type { ResumeProfile } from "@/types/resume";
+import type { ResumeProfile } from "@/shared/types/resume";
 
 export async function POST(request: Request) {
   try {

@@ -1,6 +1,6 @@
 import { getApiKey } from "@/services/api-keys/api-keys";
 import { getSettings } from "@/services/settings/settings";
-import type { AiProviderName } from "@/types/settings";
+import type { AiProviderName } from "@/shared/types/settings";
 
 /**
  * Gets the default provider based on available environment variable keys

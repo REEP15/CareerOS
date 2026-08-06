@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc, getDocs, query, orderBy, limit, where, updateDoc, writeBatch } from "firebase/firestore";
 
-import { getUserNotificationsCollection, getDb, isFirebaseConfigured } from "@/lib/firebase";
-import type { Notification, NotificationType } from "@/types/notification";
+import { getUserNotificationsCollection, getDb, isFirebaseConfigured } from "@/shared/lib/firebase";
+import type { Notification, NotificationType } from "@/shared/types/notification";
 
 export async function getNotifications(uid: string, maxCount = 50): Promise<Notification[]> {
   if (!isFirebaseConfigured()) {

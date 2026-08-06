@@ -12,8 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { authFetch } from "@/lib/auth-fetch";
-import type { ApplicationPackage } from "@/services/apply/tracker";
+import { authFetch } from "@/shared/lib/auth-fetch";
+import type { ApplicationPackage } from "@/shared/types/application";
 import {
   APPLICATION_STATUS_LABELS,
   ApplicationStatus,
@@ -45,8 +45,8 @@ const STATUS_VARIANT: Partial<Record<ApplicationStatus, "default" | "secondary" 
 export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersions }: JobDetailPanelProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [notes, setNotes] = useState(pkg.application.notes ?? "");
-  const [status, setStatus] = useState(pkg.application.status);
+  const [notes, setNotes] = useState(pkg.application?.notes ?? "");
+  const [status, setStatus] = useState(pkg.application?.status as ApplicationStatus);
   
   // Automation state
   const [automationStatus, setAutomationStatus] = useState<"idle" | "running" | "paused" | "completed" | "error">("idle");
@@ -60,6 +60,10 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
   const [pendingConfirmation, setPendingConfirmation] = useState<any>(null);
 
   const { job, match, tailoredResume, coverLetter, application } = pkg;
+
+  if (!job) {
+    return <div>Job information not available</div>;
+  }
 
   const handleAction = (endpoint: string, body: Record<string, unknown>, successMessage: string) => {
     startTransition(async () => {
@@ -97,7 +101,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
             jobDescription: job.description,
             jobLocation: job.location,
             jobSalary: job.salary,
-            jobUrl: job.applyUrl,
+            jobUrl: job.applyUrl || job.url,
           }),
         });
         const payload = await response.json();
@@ -376,7 +380,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
                   <div>
                     <p className="mb-2 text-sm font-medium">Strengths</p>
                     <div className="flex flex-wrap gap-2">
-                      {match?.strengths?.map((strength) => (
+                      {match?.strengths?.map((strength: string) => (
                         <Badge key={strength} variant="success">
                           {strength}
                         </Badge>
@@ -386,7 +390,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
                   <div>
                     <p className="mb-2 text-sm font-medium">Weaknesses</p>
                     <div className="flex flex-wrap gap-2">
-                      {match?.weaknesses?.map((weakness) => (
+                      {match?.weaknesses?.map((weakness: string) => (
                         <Badge key={weakness} variant="destructive">
                           {weakness}
                         </Badge>
@@ -398,7 +402,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
                   <div>
                     <p className="mb-2 text-sm font-medium">Missing Skills</p>
                     <div className="flex flex-wrap gap-2">
-                      {match.missingSkills.map((skill) => (
+                      {match.missingSkills.map((skill: string) => (
                         <Badge key={skill} variant="outline">
                           {skill}
                         </Badge>
@@ -630,7 +634,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
                 variant="outline"
                 disabled={isPending || !tailoredResume}
                 onClick={() =>
-                  handleAction("/api/apply/start", { jobId: job.id }, "Application opened for review.")
+                  handleAction("/api/automation/run", { jobId: job.id }, "Application opened for review.")
                 }
               >
                 <Rocket className="h-4 w-4" />
@@ -695,7 +699,7 @@ export function JobDetailPanel({ package: pkg, resumeVersions, coverLetterVersio
             </CardContent>
           </Card>
 
-          {application.timeline && application.timeline.length > 0 ? (
+          {application?.timeline && application.timeline.length > 0 ? (
             <Card>
               <CardHeader>
                 <CardTitle>Timeline</CardTitle>

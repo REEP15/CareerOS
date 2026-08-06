@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { verifyAuthToken } from "@/lib/server-auth";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
 import { loadPrimaryResumeProfile, loadStoredJobs, matchJob, saveMatchResults } from "@/services/matcher/matcher";
 
 export async function POST(request: Request) {

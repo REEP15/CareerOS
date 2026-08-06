@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { deleteUser } from "firebase/auth";
 import { collection, getDocs, writeBatch } from "firebase/firestore";
 
-import { getAuth, getDb, isFirebaseConfigured } from "@/lib/firebase";
-import { verifyAuthToken } from "@/lib/server-auth";
-import { USER_COLLECTIONS } from "@/lib/firebase";
+import { getAuth, getDb, isFirebaseConfigured } from "@/shared/lib/firebase";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
+import { USER_COLLECTIONS } from "@/shared/lib/firebase";
 
 export async function POST(request: Request) {
   try {

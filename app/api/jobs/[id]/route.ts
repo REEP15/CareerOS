@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { verifyAuthToken } from "@/lib/server-auth";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
 import { getDoc, doc } from "firebase/firestore";
-import { getUserJobsCollection, getUserMatchesCollection, isFirebaseConfigured } from "@/lib/firebase";
-import type { JobPosting } from "@/types/job";
-import type { MatchResult } from "@/types/match";
+import { getUserJobsCollection, getUserMatchesCollection, isFirebaseConfigured } from "@/shared/lib/firebase";
+import type { JobPosting } from "@/shared/types/job";
+import type { MatchResult } from "@/shared/types/match";
 
 export async function GET(
   request: Request,

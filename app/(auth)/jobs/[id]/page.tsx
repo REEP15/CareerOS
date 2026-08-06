@@ -6,12 +6,12 @@ import { notFound } from "next/navigation";
 import { JobDetailPanel } from "@/components/job-detail-panel";
 import { PageHeader } from "@/components/page-header";
 import { useAuth } from "@/components/auth-provider";
-import { authFetch } from "@/lib/auth-fetch";
-import type { ApplicationPackage } from "@/services/apply/tracker";
-import type { TailoredResume } from "@/types/tailoredResume";
-import type { CoverLetter } from "@/types/coverLetter";
-import type { JobPosting } from "@/types/job";
-import type { MatchResult } from "@/types/match";
+import { authFetch } from "@/shared/lib/auth-fetch";
+import type { ApplicationPackage } from "@/shared/types/application";
+import type { TailoredResume } from "@/shared/types/tailoredResume";
+import type { CoverLetter } from "@/shared/types/coverLetter";
+import type { JobPosting } from "@/shared/types/job";
+import type { MatchResult } from "@/shared/types/match";
 
 export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { user, loading } = useAuth();
@@ -34,10 +34,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         authFetch(`/api/jobs/${id}`).then((res) => res.json()),
         authFetch(`/api/tailored-resumes/${id}`).then((res) => res.json()),
         authFetch(`/api/cover-letters/${id}`).then((res) => res.json()),
-      ]).then(([jobRes, resumesRes, coverLettersRes]) => {
+        authFetch(`/api/matches/${id}`).then((res) => res.json()),
+      ]).then(([jobRes, resumesRes, coverLettersRes, matchRes]) => {
         if (jobRes.success) {
           setJob(jobRes.job);
-          setMatch(jobRes.match || null);
+        }
+        if (matchRes.success) {
+          setMatch(matchRes.match);
         }
         if (resumesRes.success) {
           setResumeVersions(resumesRes.versions);
@@ -65,6 +68,26 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
   // Create a minimal application package structure for the panel
   const applicationPackage: ApplicationPackage = {
+    id: job.id,
+    userId: user?.uid || "",
+    job: {
+      id: job.id,
+      title: job.title,
+      company: job.company,
+      description: job.description,
+      location: job.location,
+      salary: job.salary,
+      url: job.applyUrl,
+      source: job.source,
+      applyUrl: job.applyUrl,
+    },
+    tailoredResume: undefined,
+    coverLetter: undefined,
+    atsAnalysis: undefined,
+    originalResumeId: "",
+    status: "draft",
+    generatedAt: job.scrapedAt,
+    updatedAt: job.scrapedAt,
     application: {
       id: job.id,
       userId: user?.uid || "",
@@ -74,10 +97,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       updatedAt: job.scrapedAt,
       notes: "",
     },
-    coverLetter: null,
-    job,
     match,
-    tailoredResume: null,
   };
 
   return (

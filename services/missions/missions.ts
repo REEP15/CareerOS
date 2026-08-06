@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc, deleteDoc, getDocs, query, orderBy } from "firebase/firestore";
 
-import { getUserMissionsCollection, getDb, isFirebaseConfigured } from "@/lib/firebase";
-import type { Mission, MissionInput } from "@/types/mission";
+import { getUserMissionsCollection, getDb, isFirebaseConfigured } from "@/shared/lib/firebase";
+import type { Mission, MissionInput } from "@/shared/types/mission";
 
 export async function getMissions(uid: string): Promise<Mission[]> {
   if (!isFirebaseConfigured()) {

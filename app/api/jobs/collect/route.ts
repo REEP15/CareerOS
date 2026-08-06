@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { verifyAuthToken } from "@/lib/server-auth";
-import { collectors } from "@/services/collector/registry";
-import { dedupeJobs } from "@/services/collector/normalize";
-import { saveCollectedJobs } from "@/services/collector/save";
-import { getActiveMissions } from "@/services/missions/missions";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
 import { createNotification } from "@/services/notifications/notifications";
-import { NotificationType } from "@/types/notification";
+import { NotificationType } from "@/shared/types/notification";
+import { getActiveMissions } from "@/services/missions/missions";
+
+const WORKER_URL = process.env.WORKER_URL || 'http://localhost:3001';
 
 export async function POST(request: Request) {
   let authResult: { uid: string } | null = null;
@@ -19,58 +18,35 @@ export async function POST(request: Request) {
     }
 
     const activeMissions = await getActiveMissions(authResult.uid);
-    const collectedGroups = await Promise.all(collectors.map((collector) => collector.collect()));
-    let mergedJobs = collectedGroups.flat();
 
-    if (activeMissions.length > 0) {
-      mergedJobs = mergedJobs.filter((job) =>
-        activeMissions.some((mission) => {
-          if (mission.sources.length > 0 && !mission.sources.some((s) => s.toLowerCase() === job.source.toLowerCase())) {
-            return false;
-          }
+    // Proxy to worker service with mission filtering data
+    const workerResponse = await fetch(`${WORKER_URL}/collect`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        uid: authResult.uid,
+        missionFilter: {
+          activeMissions
+        }
+      }),
+    });
 
-          const text = `${job.title} ${job.description}`.toLowerCase();
+    const workerData = await workerResponse.json();
 
-          if (mission.keywords.length > 0 && !mission.keywords.some((k) => text.includes(k.toLowerCase()))) {
-            return false;
-          }
-
-          if (mission.excludedKeywords.some((k) => text.includes(k.toLowerCase()))) {
-            return false;
-          }
-
-          if (mission.locations.length > 0) {
-            const jobLocation = job.location.toLowerCase();
-            const locationMatch = mission.locations.some((loc) => jobLocation.includes(loc.toLowerCase()));
-
-            if (!locationMatch && !(mission.remote && jobLocation.includes("remote"))) {
-              return false;
-            }
-          }
-
-          return true;
-        }),
-      );
+    if (!workerResponse.ok) {
+      throw new Error(workerData.error || 'Worker service error');
     }
-
-    const { jobs: uniqueJobs } = dedupeJobs(mergedJobs);
-    const result = await saveCollectedJobs(authResult.uid, uniqueJobs);
 
     await createNotification(authResult.uid, {
       type: NotificationType.COLLECTION_FINISHED,
       title: "Job Collection Complete",
-      message: `Added ${result.added} new jobs from ${collectors.length} collectors.`,
+      message: `Added ${workerData.added} new jobs from ${workerData.collectors} collectors.`,
       link: "/jobs",
     });
 
-    return NextResponse.json({
-      success: true,
-      collectors: collectors.length,
-      jobsFound: mergedJobs.length,
-      added: result.added,
-      duplicates: result.skipped + (mergedJobs.length - uniqueJobs.length),
-      missionFiltered: activeMissions.length > 0,
-    });
+    return NextResponse.json(workerData);
   } catch (error) {
     if (authResult) {
       await createNotification(authResult.uid, {

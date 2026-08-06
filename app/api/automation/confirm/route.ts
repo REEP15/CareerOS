@@ -4,19 +4,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "firebase/auth";
-import { AutomationService } from "@/services/apply/automation-service";
-import { loadPrimaryResumeProfile } from "@/services/matcher/matcher";
-import { generateResumePDF, generateCoverLetterPDF } from "@/services/files/pdf-generator";
-import { uploadScreenshot } from "@/services/apply/screenshot-service";
-import { requestUserConfirmation } from "@/services/apply/confirmation-service";
+import { verifyAuthToken } from "@/shared/lib/server-auth";
+import { handleUserConfirmation } from "@/services/apply/confirmation-service";
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const authResult = await verifyAuthToken(request);
 
-    if (!user) {
+    if (!authResult) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -27,9 +22,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields: jobId, runId" }, { status: 400 });
     }
 
-    // In a real implementation, this would update the confirmation service
-    // For now, we'll just acknowledge the response
-    return NextResponse.json({ success: true, acknowledged: true });
+    // Handle confirmation directly using confirmation service
+    const result = await handleUserConfirmation(authResult.uid, jobId, runId, answer);
+
+    return NextResponse.json({ success: true, result });
   } catch (error) {
     console.error("Confirmation error:", error);
     return NextResponse.json(
