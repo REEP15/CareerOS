@@ -42,6 +42,9 @@ const firestore_1 = require("firebase/firestore");
 const module_1 = __importDefault(require("module"));
 const path_1 = require("path");
 const dotenv_1 = require("dotenv");
+// Debug: Log which firebase modules are being used
+console.log('[worker/index.ts] firebase/app module path:', require.resolve('firebase/app'));
+console.log('[worker/index.ts] firebase/firestore module path:', require.resolve('firebase/firestore'));
 const ModuleCtor = module_1.default;
 // Load environment variables
 (0, dotenv_1.config)();
@@ -84,9 +87,16 @@ const firebaseConfig = {
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+console.log('[worker/index.ts] Environment variables loaded:');
+console.log('[worker/index.ts] NEXT_PUBLIC_FIREBASE_API_KEY:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? 'SET' : 'NOT SET');
+console.log('[worker/index.ts] NEXT_PUBLIC_FIREBASE_PROJECT_ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET');
 // Initialize Firebase
 const app = (0, app_1.initializeApp)(firebaseConfig);
 const db = (0, firestore_1.getFirestore)(app);
+// Debug: Check Firebase App instances
+console.log('[worker/index.ts] After initializeApp:');
+console.log('[worker/index.ts] getApps().length:', (0, app_1.getApps)().length);
+console.log('[worker/index.ts] getApps().map(app => app.name):', (0, app_1.getApps)().map(app => app.name));
 const appWorker = (0, express_1.default)();
 appWorker.use(express_1.default.json());
 // Health check

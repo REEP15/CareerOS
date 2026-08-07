@@ -4,7 +4,12 @@ import { getUserJobsCollection, isFirebaseConfigured, getDb } from "@/lib/fireba
 import { createJobDuplicateKey } from "../collector/normalize";
 import type { JobPosting } from "@/types/job";
 
+// Debug: Log which firebase/firestore module is being used
+console.log('[worker/services/collector/save.ts] firebase/firestore module path:', require.resolve('firebase/firestore'));
+console.log('[worker/services/collector/save.ts] firebase/app module path:', require.resolve('firebase/app'));
+
 export async function saveCollectedJobs(uid: string, jobs: JobPosting[]) {
+  console.log('[worker/services/collector/save.ts] saveCollectedJobs called');
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase environment variables are missing.");
   }
@@ -23,6 +28,7 @@ export async function saveCollectedJobs(uid: string, jobs: JobPosting[]) {
     }
 
     seen.add(duplicateKey);
+    console.log('[worker/services/collector/save.ts] About to call setDoc for job:', job.id);
     await setDoc(doc(getUserJobsCollection(uid), job.id), job);
     added += 1;
   }

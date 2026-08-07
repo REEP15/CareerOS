@@ -36,6 +36,9 @@ const app_1 = require("firebase/app");
 const auth_1 = require("firebase/auth");
 const firestore_1 = require("firebase/firestore");
 const storage_1 = require("firebase/storage");
+// Debug: Log which firebase modules are being used
+console.log('[shared/lib/firebase.ts] firebase/app module path:', require.resolve('firebase/app'));
+console.log('[shared/lib/firebase.ts] firebase/firestore module path:', require.resolve('firebase/firestore'));
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -44,6 +47,9 @@ const firebaseConfig = {
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+console.log('[shared/lib/firebase.ts] Environment variables loaded:');
+console.log('[shared/lib/firebase.ts] NEXT_PUBLIC_FIREBASE_API_KEY:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? 'SET' : 'NOT SET');
+console.log('[shared/lib/firebase.ts] NEXT_PUBLIC_FIREBASE_PROJECT_ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET');
 exports.COLLECTIONS = {
     resume: "resume",
     jobs: "jobs",
@@ -77,12 +83,15 @@ var firestore_2 = require("firebase/firestore");
 Object.defineProperty(exports, "doc", { enumerable: true, get: function () { return firestore_2.doc; } });
 Object.defineProperty(exports, "getDoc", { enumerable: true, get: function () { return firestore_2.getDoc; } });
 function isFirebaseConfigured() {
-    return Boolean(firebaseConfig.apiKey &&
+    const configured = Boolean(firebaseConfig.apiKey &&
         firebaseConfig.authDomain &&
         firebaseConfig.projectId &&
         firebaseConfig.storageBucket &&
         firebaseConfig.messagingSenderId &&
         firebaseConfig.appId);
+    console.log('[shared/lib/firebase.ts] isFirebaseConfigured:', configured);
+    console.log('[shared/lib/firebase.ts] firebaseConfig keys:', Object.keys(firebaseConfig));
+    return configured;
 }
 function ensureFirebaseConfigured() {
     if (!isFirebaseConfigured()) {
@@ -95,8 +104,12 @@ let firestore = null;
 let storage = null;
 function getFirebaseApp() {
     ensureFirebaseConfigured();
+    console.log('[shared/lib/firebase.ts] getFirebaseApp called, firebaseApp exists:', !!firebaseApp);
+    console.log('[shared/lib/firebase.ts] getApps().length:', (0, app_1.getApps)().length);
+    console.log('[shared/lib/firebase.ts] getApps().map(app => app.name):', (0, app_1.getApps)().map(app => app.name));
     if (!firebaseApp) {
         firebaseApp = (0, app_1.getApps)().length > 0 ? (0, app_1.getApp)() : (0, app_1.initializeApp)(firebaseConfig);
+        console.log('[shared/lib/firebase.ts] After initialization, getApps().length:', (0, app_1.getApps)().length);
     }
     return firebaseApp;
 }
@@ -108,8 +121,10 @@ function getAuth() {
     return auth;
 }
 function getDb() {
+    console.log('[shared/lib/firebase.ts] getDb called, firestore exists:', !!firestore);
     if (!firestore) {
         firestore = (0, firestore_1.getFirestore)(getFirebaseApp());
+        console.log('[shared/lib/firebase.ts] Firestore initialized');
     }
     return firestore;
 }

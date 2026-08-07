@@ -1,9 +1,13 @@
 import express from 'express';
-import { initializeApp } from 'firebase/app';
+import { getApps, initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import Module from 'module';
 import { resolve } from 'path';
 import { config } from 'dotenv';
+
+// Debug: Log which firebase modules are being used
+console.log('[worker/index.ts] firebase/app module path:', require.resolve('firebase/app'));
+console.log('[worker/index.ts] firebase/firestore module path:', require.resolve('firebase/firestore'));
 
 const ModuleCtor = Module as typeof Module & {
   _resolveFilename?: (request: string, parent: NodeModule, isMain: boolean, options?: unknown) => string;
@@ -55,9 +59,18 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+console.log('[worker/index.ts] Environment variables loaded:');
+console.log('[worker/index.ts] NEXT_PUBLIC_FIREBASE_API_KEY:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? 'SET' : 'NOT SET');
+console.log('[worker/index.ts] NEXT_PUBLIC_FIREBASE_PROJECT_ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET');
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// Debug: Check Firebase App instances
+console.log('[worker/index.ts] After initializeApp:');
+console.log('[worker/index.ts] getApps().length:', getApps().length);
+console.log('[worker/index.ts] getApps().map(app => app.name):', getApps().map(app => app.name));
 
 const appWorker = express();
 appWorker.use(express.json());

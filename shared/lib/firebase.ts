@@ -14,6 +14,10 @@ import type { ResumeProfile } from "../types/resume";
 import type { AppSettings } from "../types/settings";
 import type { TailoredResume } from "../types/tailoredResume";
 
+// Debug: Log which firebase modules are being used
+console.log('[shared/lib/firebase.ts] firebase/app module path:', require.resolve('firebase/app'));
+console.log('[shared/lib/firebase.ts] firebase/firestore module path:', require.resolve('firebase/firestore'));
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -22,6 +26,10 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
+console.log('[shared/lib/firebase.ts] Environment variables loaded:');
+console.log('[shared/lib/firebase.ts] NEXT_PUBLIC_FIREBASE_API_KEY:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? 'SET' : 'NOT SET');
+console.log('[shared/lib/firebase.ts] NEXT_PUBLIC_FIREBASE_PROJECT_ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET');
 
 export const COLLECTIONS = {
   resume: "resume",
@@ -57,7 +65,7 @@ export const USER_COLLECTIONS = {
 export { doc, getDoc } from "firebase/firestore";
 
 export function isFirebaseConfigured() {
-  return Boolean(
+  const configured = Boolean(
     firebaseConfig.apiKey &&
       firebaseConfig.authDomain &&
       firebaseConfig.projectId &&
@@ -65,6 +73,9 @@ export function isFirebaseConfigured() {
       firebaseConfig.messagingSenderId &&
       firebaseConfig.appId,
   );
+  console.log('[shared/lib/firebase.ts] isFirebaseConfigured:', configured);
+  console.log('[shared/lib/firebase.ts] firebaseConfig keys:', Object.keys(firebaseConfig));
+  return configured;
 }
 
 function ensureFirebaseConfigured() {
@@ -81,8 +92,13 @@ let storage: FirebaseStorage | null = null;
 export function getFirebaseApp() {
   ensureFirebaseConfigured();
 
+  console.log('[shared/lib/firebase.ts] getFirebaseApp called, firebaseApp exists:', !!firebaseApp);
+  console.log('[shared/lib/firebase.ts] getApps().length:', getApps().length);
+  console.log('[shared/lib/firebase.ts] getApps().map(app => app.name):', getApps().map(app => app.name));
+
   if (!firebaseApp) {
     firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    console.log('[shared/lib/firebase.ts] After initialization, getApps().length:', getApps().length);
   }
 
   return firebaseApp;
@@ -99,10 +115,11 @@ export function getAuth() {
 }
 
 export function getDb() {
+  console.log('[shared/lib/firebase.ts] getDb called, firestore exists:', !!firestore);
   if (!firestore) {
     firestore = getFirestore(getFirebaseApp());
+    console.log('[shared/lib/firebase.ts] Firestore initialized');
   }
-
   return firestore;
 }
 
