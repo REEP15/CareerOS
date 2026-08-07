@@ -152,6 +152,13 @@ appWorker.post('/collect', async (req, res) => {
     }
     catch (error) {
         console.error('Collection error:', error);
+        if (error instanceof Error) {
+            console.error('Stack trace:', error.stack);
+        }
+        else {
+            console.error('Error properties:', Object.keys(error));
+            console.error('Error details:', error);
+        }
         res.status(500).json({
             success: false,
             error: error.message || 'Job collection failed',
