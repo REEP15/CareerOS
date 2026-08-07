@@ -14,7 +14,10 @@ class WellfoundCollector extends base_1.BaseCollector {
             const { browser, context, page } = await this.launchBrowser();
             try {
                 // Navigate to Wellfound jobs
-                await page.goto('https://www.wellfound.com/jobs', { waitUntil: 'networkidle' });
+                await page.goto('https://www.wellfound.com/jobs', {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 60000,
+                });
                 // Wait for job listings to load - using common Wellfound selectors
                 const hasJobs = await this.waitForSelector(page, 'a[href*="/jobs/"]', 10000);
                 if (!hasJobs) {
