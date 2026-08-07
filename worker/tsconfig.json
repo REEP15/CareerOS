@@ -24,22 +24,28 @@
       "@services/*": ["services/*"]
     },
     "outDir": "dist",
-    "rootDirs": [".", "../shared"]
+    "rootDir": ".."
   },
-  "files": ["index.ts"],
+  "files": ["./index.ts"],
   "include": [
-    "services/**/*.ts",
-    "scripts/**/*.ts",
-    "**/*.ts",
-    "../shared/**/*.ts"
+    "./services/**/*.ts",
+    "./scripts/**/*.ts",
+    "./**/*.ts",
+    "../shared/lib/ai.ts",
+    "../shared/lib/firebase.ts",
+    "../shared/lib/utils.ts",
+    "../shared/types/**/*.ts"
   ],
   "exclude": [
     "dist",
     "node_modules",
-    "../services/**",
     "../app/**",
     "../components/**",
     "../lib/**",
-    "../types/**"
+    "../types/**",
+    "../shared/lib/auth-fetch.ts",
+    "../shared/lib/pdf-parse-wrapper.ts",
+    "../shared/lib/server-auth.ts",
+    "../shared/lib/utils.test.ts"
   ]
 }

@@ -72,6 +72,31 @@ export interface ResolverInputs {
   coverLetterPath?: string;
 }
 
+function parseLocation(location: string): Pick<NonNullable<UserProfile["address"]>, "city" | "state" | "country"> {
+  const parts = location
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return {};
+  }
+
+  if (parts.length === 1) {
+    return { city: parts[0] };
+  }
+
+  if (parts.length === 2) {
+    return { city: parts[0], country: parts[1] };
+  }
+
+  return {
+    city: parts[0],
+    state: parts.slice(1, -1).join(", "),
+    country: parts[parts.length - 1],
+  };
+}
+
 function pickBooleanOption(options: FieldOption[] | undefined, want: boolean): FieldOption | undefined {
   if (!options) return undefined;
   const yes = /\b(yes|true|i (am|do)|authorized|eligible)\b/i;
@@ -92,6 +117,7 @@ function match(option: FieldOption[] | undefined, value: string): string | undef
 
 export function mapResumeProfileToUserProfile(resume: ResumeProfile, userId: string): UserProfile {
   const experience = resume.experience[0] ?? ({} as ResumeProfile["experience"][number]);
+  const location = parseLocation(resume.personal.location);
   const totalYears = resume.experience.reduce((acc, exp) => {
     if (!exp.startDate) return acc;
     const start = new Date(exp.startDate);
@@ -108,10 +134,10 @@ export function mapResumeProfileToUserProfile(resume: ResumeProfile, userId: str
     email: resume.personal.email,
     phone: resume.personal.phone,
     address: {
-      line1: resume.personal.location,
-      city: undefined,
-      state: undefined,
-      country: undefined,
+      line1: undefined,
+      city: location.city,
+      state: location.state,
+      country: location.country,
       postalCode: undefined,
     },
     links: {

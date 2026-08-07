@@ -34,11 +34,10 @@ export async function captureAndUploadScreenshot(
   }
 }
 
-// Placeholder function for API endpoints that don't have page access
 export async function uploadScreenshot(userId: string, jobId: string, label: string): Promise<string> {
-  // TODO: This is a placeholder for API endpoints
-  // In production, the actual screenshot capture happens in the engine hooks
-  return `screenshots/${Date.now()}_${label}.png`;
+  throw new Error(
+    `Cannot upload screenshot "${label}" for ${userId}/${jobId} without a browser page. Use captureAndUploadScreenshot instead.`,
+  );
 }
 
 export async function getScreenshotUrl(userId: string, jobId: string, filename: string): Promise<string> {
@@ -48,7 +47,5 @@ export async function getScreenshotUrl(userId: string, jobId: string, filename: 
 }
 
 export async function listScreenshots(userId: string, jobId: string): Promise<string[]> {
-  // TODO: Implement listing of screenshots from Firebase Storage
-  // This would use listAll() from Firebase Storage
-  return [];
+  throw new Error(`Screenshot listing is not implemented for ${userId}/${jobId}.`);
 }

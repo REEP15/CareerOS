@@ -10,13 +10,9 @@ import { buildRegistry } from "./adapters";
 import { createEngineHooks, type HooksDependencies } from "./engine/hooks";
 import type { AutomationRunContext } from "./engine/context";
 import { loadApplicationPackage } from "./tracker";
- // TODO: Move to worker if needed
 import { mapResumeProfileToUserProfile, type ResolverInputs, type UserProfile } from "./answer-resolver";
- // TODO: Move to worker if needed
 import { loadPrimaryResumeProfile } from "../matcher/matcher";
- // TODO: Move to worker if needed
 import { generateResumePDF, generateCoverLetterPDF } from "../files/pdf-generator";
- // TODO: Move to worker if needed
 import { wrapPlaywrightPage, loadPlaywright, type Page as PlaywrightPage } from "./browser-adapter";
 import { statePersistenceService, type AutomationRunState } from "./state-persistence";
 import { captureAndUploadScreenshot } from "./screenshot-service";

@@ -146,27 +146,14 @@ class CoreAutomationEngine {
             currentPhase = "ready_for_review";
             result.state = "ready_for_review";
             await hooks.captureScreenshot("ready-for-review");
-            const submit = await adapter.locateSubmit(formPage);
-            const decision = await hooks.requestConfirmation({
+            await adapter.locateSubmit(formPage);
+            await hooks.requestConfirmation({
                 runId: ctx.runId,
                 reason: "final_submit",
-                question: "The application is filled and ready. Do you authorize submitting it now?",
+                question: "The application is filled and ready for your manual review. CareerOS will not submit it automatically.",
             });
-            if (decision.abort || decision.approvedSubmit !== true) {
-                // Explicit confirmation is REQUIRED. Anything else stops short of submit.
-                hooks.log("info", "Submission not authorized; leaving application staged.");
-                return this.finalize(result, "completed_manual");
-            }
-            if (!submit) {
-                hooks.log("warn", "Submit authorized but no submit control was found; leaving staged for manual submit.");
-                return this.finalize(result, "completed_manual");
-            }
-            // Phase 5: Submitting
-            currentPhase = "submitting";
-            await submit.click();
-            await page.waitForLoadState("networkidle").catch(() => { });
-            await hooks.captureScreenshot("submitted");
-            return this.finalize(result, "submitted");
+            hooks.log("info", "Application staged for manual review; automatic submission is disabled.");
+            return this.finalize(result, "completed_manual");
         }
         catch (err) {
             const reason = err instanceof Error ? err.message : "Unknown engine error";

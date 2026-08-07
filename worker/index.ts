@@ -1,14 +1,49 @@
 import express from 'express';
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { join } from 'path';
+import Module from 'module';
+import { resolve } from 'path';
 import { config } from 'dotenv';
+
+const ModuleCtor = Module as typeof Module & {
+  _resolveFilename?: (request: string, parent: NodeModule, isMain: boolean, options?: unknown) => string;
+};
 
 // Load environment variables
 config();
 
-// Use process.cwd() as a stable base for resolving relative paths in worker
-const WORKER_DIR = process.cwd();
+// Resolve shared imports at runtime for the built CommonJS worker.
+const originalResolveFilename = ModuleCtor._resolveFilename;
+const projectRoot = resolve(__dirname, '..', '..');
+const sharedRoot = resolve(projectRoot, 'shared');
+
+if (originalResolveFilename) {
+  ModuleCtor._resolveFilename = function (request: string, parent: NodeModule, isMain: boolean, options?: unknown) {
+    if (typeof request === 'string' && request.startsWith('@/')) {
+      const relativeRequest = request.slice(2);
+      const baseCandidate = resolve(sharedRoot, relativeRequest);
+      const candidates = [
+        baseCandidate,
+        `${baseCandidate}.ts`,
+        `${baseCandidate}.js`,
+        `${baseCandidate}.json`,
+        resolve(baseCandidate, 'index.ts'),
+        resolve(baseCandidate, 'index.js'),
+        resolve(baseCandidate, 'index.json'),
+      ];
+
+      for (const candidate of candidates) {
+        try {
+          return originalResolveFilename.call(this, candidate, parent, isMain, options);
+        } catch {
+          // Try the next candidate if this path does not resolve.
+        }
+      }
+    }
+
+    return originalResolveFilename.call(this, request, parent, isMain, options);
+  };
+}
 
 // Firebase configuration (same as Next.js)
 const firebaseConfig = {

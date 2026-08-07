@@ -9,9 +9,7 @@ const core_engine_1 = require("./engine/core-engine");
 const adapters_1 = require("./adapters");
 const hooks_1 = require("./engine/hooks");
 const tracker_1 = require("./tracker");
-// TODO: Move to worker if needed
 const answer_resolver_1 = require("./answer-resolver");
-// TODO: Move to worker if needed
 const browser_adapter_1 = require("./browser-adapter");
 const state_persistence_1 = require("./state-persistence");
 const screenshot_service_1 = require("./screenshot-service");

@@ -8,6 +8,26 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.mapResumeProfileToUserProfile = mapResumeProfileToUserProfile;
 exports.resolveAnswer = resolveAnswer;
 const field_classifier_1 = require("./field-classifier");
+function parseLocation(location) {
+    const parts = location
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean);
+    if (parts.length === 0) {
+        return {};
+    }
+    if (parts.length === 1) {
+        return { city: parts[0] };
+    }
+    if (parts.length === 2) {
+        return { city: parts[0], country: parts[1] };
+    }
+    return {
+        city: parts[0],
+        state: parts.slice(1, -1).join(", "),
+        country: parts[parts.length - 1],
+    };
+}
 function pickBooleanOption(options, want) {
     if (!options)
         return undefined;
@@ -28,6 +48,7 @@ function match(option, value) {
 function mapResumeProfileToUserProfile(resume, userId) {
     var _a;
     const experience = (_a = resume.experience[0]) !== null && _a !== void 0 ? _a : {};
+    const location = parseLocation(resume.personal.location);
     const totalYears = resume.experience.reduce((acc, exp) => {
         if (!exp.startDate)
             return acc;
@@ -44,10 +65,10 @@ function mapResumeProfileToUserProfile(resume, userId) {
         email: resume.personal.email,
         phone: resume.personal.phone,
         address: {
-            line1: resume.personal.location,
-            city: undefined,
-            state: undefined,
-            country: undefined,
+            line1: undefined,
+            city: location.city,
+            state: location.state,
+            country: location.country,
             postalCode: undefined,
         },
         links: {

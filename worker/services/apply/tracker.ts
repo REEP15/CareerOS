@@ -1,8 +1,10 @@
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { ApplicationStatus } from "@/types/application";
 import type { Application, ApplicationPackage as StoredApplicationPackage } from "@/types/application";
 import type { JobPosting } from "@/types/job";
+import type { MatchResult } from "@/types/match";
+import type { ResumeProfile } from "@/types/resume";
 import { createApplicationPackageService } from "../tailoring/package";
 
 export type ApplicationResult = {
@@ -21,12 +23,12 @@ export type ApplicationPackage = {
     pdfUrl?: string;
   } | null;
   job: JobPosting;
-  match: any;
+  match: MatchResult | null;
   tailoredResume: {
     versionLabel: string;
-    content: any;
+    content: ResumeProfile;
     pdfUrl?: string;
-    diff: any;
+    diff: NonNullable<StoredApplicationPackage["tailoredResume"]>["diff"];
   } | null;
 };
 

@@ -39,11 +39,42 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const app_1 = require("firebase/app");
 const firestore_1 = require("firebase/firestore");
+const module_1 = __importDefault(require("module"));
+const path_1 = require("path");
 const dotenv_1 = require("dotenv");
+const ModuleCtor = module_1.default;
 // Load environment variables
 (0, dotenv_1.config)();
-// Use process.cwd() as a stable base for resolving relative paths in worker
-const WORKER_DIR = process.cwd();
+// Resolve shared imports at runtime for the built CommonJS worker.
+const originalResolveFilename = ModuleCtor._resolveFilename;
+const projectRoot = (0, path_1.resolve)(__dirname, '..', '..');
+const sharedRoot = (0, path_1.resolve)(projectRoot, 'shared');
+if (originalResolveFilename) {
+    ModuleCtor._resolveFilename = function (request, parent, isMain, options) {
+        if (typeof request === 'string' && request.startsWith('@/')) {
+            const relativeRequest = request.slice(2);
+            const baseCandidate = (0, path_1.resolve)(sharedRoot, relativeRequest);
+            const candidates = [
+                baseCandidate,
+                `${baseCandidate}.ts`,
+                `${baseCandidate}.js`,
+                `${baseCandidate}.json`,
+                (0, path_1.resolve)(baseCandidate, 'index.ts'),
+                (0, path_1.resolve)(baseCandidate, 'index.js'),
+                (0, path_1.resolve)(baseCandidate, 'index.json'),
+            ];
+            for (const candidate of candidates) {
+                try {
+                    return originalResolveFilename.call(this, candidate, parent, isMain, options);
+                }
+                catch {
+                    // Try the next candidate if this path does not resolve.
+                }
+            }
+        }
+        return originalResolveFilename.call(this, request, parent, isMain, options);
+    };
+}
 // Firebase configuration (same as Next.js)
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

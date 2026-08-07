@@ -28,11 +28,8 @@ async function captureAndUploadScreenshot(page, userId, jobId, label) {
         throw new Error(`Screenshot capture failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
-// Placeholder function for API endpoints that don't have page access
 async function uploadScreenshot(userId, jobId, label) {
-    // TODO: This is a placeholder for API endpoints
-    // In production, the actual screenshot capture happens in the engine hooks
-    return `screenshots/${Date.now()}_${label}.png`;
+    throw new Error(`Cannot upload screenshot "${label}" for ${userId}/${jobId} without a browser page. Use captureAndUploadScreenshot instead.`);
 }
 async function getScreenshotUrl(userId, jobId, filename) {
     const storage = (0, firebase_1.getFileStorage)();
@@ -40,7 +37,5 @@ async function getScreenshotUrl(userId, jobId, filename) {
     return (0, storage_1.getDownloadURL)(screenshotRef);
 }
 async function listScreenshots(userId, jobId) {
-    // TODO: Implement listing of screenshots from Firebase Storage
-    // This would use listAll() from Firebase Storage
-    return [];
+    throw new Error(`Screenshot listing is not implemented for ${userId}/${jobId}.`);
 }
