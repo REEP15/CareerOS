@@ -11,9 +11,10 @@ export async function getNotifications(uid: string, maxCount = 50): Promise<Noti
   const snapshot = await getDocs(
     query(getUserNotificationsCollection(uid), orderBy("createdAt", "desc"), limit(maxCount)),
   );
-  return snapshot.docs.map((document) => document.data());
+  return snapshot.docs.map(
+    (document) => document.data() as Notification
+)
 }
-
 export async function getUnreadCount(uid: string): Promise<number> {
   if (!isFirebaseConfigured()) {
     return 0;

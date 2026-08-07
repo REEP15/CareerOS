@@ -65,7 +65,9 @@ export async function getStoredMatches(uid: string): Promise<MatchResult[]> {
   }
 
   const snapshot = await getDocs(query(getUserMatchesCollection(uid), orderBy("overallScore", "desc")));
-  return snapshot.docs.map((document) => document.data());
+return snapshot.docs.map(
+  (document) => document.data() as MatchResult
+)
 }
 
 export async function getMatchForJob(uid: string, jobId: string): Promise<MatchResult | null> {
@@ -97,7 +99,9 @@ export async function loadStoredJobs(uid: string): Promise<JobPosting[]> {
   }
 
   const snapshot = await getDocs(query(getUserJobsCollection(uid), orderBy("scrapedAt", "desc")));
-  return snapshot.docs.map((document) => document.data());
+  return snapshot.docs.map(
+    (document) => document.data() as JobPosting
+)
 }
 
 function buildFallbackEvaluation(resume: ResumeProfile, job: JobPosting) {

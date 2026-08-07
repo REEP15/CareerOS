@@ -36,5 +36,7 @@ export async function getStoredJobs(uid: string): Promise<JobPosting[]> {
   }
 
   const snapshot = await getDocs(query(getUserJobsCollection(uid), orderBy("scrapedAt", "desc")));
-  return snapshot.docs.map((document) => document.data());
+ return snapshot.docs.map(
+  (document) => document.data() as JobPosting
+)
 }
