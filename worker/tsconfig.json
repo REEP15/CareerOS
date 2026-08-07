@@ -14,23 +14,32 @@
     "isolatedModules": false,
     "jsx": "react-jsx",
     "noImplicitAny": false,
-    "baseUrl": "..",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["shared/*"],
-      "@/types/*": ["shared/types/*"],
-      "@/lib/*": ["shared/lib/*"],
-      "@/shared/*": ["shared/*"],
+      "@/*": ["../shared/*"],
+      "@/types/*": ["../shared/types/*"],
+      "@/lib/*": ["../shared/lib/*"],
+      "@/shared/*": ["../shared/*"],
       "@/services/*": ["services/*"],
       "@services/*": ["services/*"]
-    }
-    ,
+    },
     "outDir": "dist",
-    "rootDir": ".."
+    "rootDirs": [".", "../shared"]
   },
+  "files": ["index.ts"],
   "include": [
+    "services/**/*.ts",
+    "scripts/**/*.ts",
     "**/*.ts",
-    "**/*.mts",
     "../shared/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "dist",
+    "node_modules",
+    "../services/**",
+    "../app/**",
+    "../components/**",
+    "../lib/**",
+    "../types/**"
+  ]
 }

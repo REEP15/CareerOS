@@ -3,7 +3,7 @@ import { getDb } from "@/lib/firebase";
 import { ApplicationStatus } from "@/types/application";
 import type { Application, ApplicationPackage as StoredApplicationPackage } from "@/types/application";
 import type { JobPosting } from "@/types/job";
-import { createApplicationPackageService } from "../../../services/tailoring/package";
+import { createApplicationPackageService } from "../tailoring/package";
 
 export type ApplicationResult = {
   jobId: string;

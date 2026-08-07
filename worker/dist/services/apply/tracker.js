@@ -7,7 +7,7 @@ exports.loadApplicationPackage = loadApplicationPackage;
 const firestore_1 = require("firebase/firestore");
 const firebase_1 = require("@/lib/firebase");
 const application_1 = require("@/types/application");
-const package_1 = require("../../../services/tailoring/package");
+const package_1 = require("../tailoring/package");
 async function getStoredApplications(uid) {
     const db = (0, firebase_1.getDb)();
     const applicationsCollection = (0, firestore_1.collection)(db, `users/${uid}/applications`);
